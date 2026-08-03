@@ -346,6 +346,7 @@ const EditorProvider = React.forwardRef<HTMLDivElement, EditorProviderProps>(
     const editor = useTiptapEditor({
       content,
       extensions: toLatentArray(extractedExtensions),
+      immediatelyRender: false,
       ...editorOptions,
     })
 

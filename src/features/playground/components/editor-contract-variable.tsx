@@ -52,7 +52,8 @@ function ContractVariableView({ node }: NodeViewProps) {
       data-key={key}
       contentEditable={false}
     >
-      {display}
+      {/* Inner element required — TipTap BubbleMenu crashes on bare text in atom node views */}
+      <span>{display}</span>
     </NodeViewWrapper>
   )
 }
@@ -228,7 +229,8 @@ function createVariableSuggestion(): Omit<SuggestionOptions, "editor"> {
           if (!props.clientRect) return
 
           popup = tippy("body", {
-            getReferenceClientRect: props.clientRect as () => DOMRect,
+            getReferenceClientRect: () =>
+              props.clientRect?.() ?? new DOMRect(0, 0, 0, 0),
             appendTo: () => document.body,
             content: component.element,
             showOnCreate: true,
@@ -246,7 +248,8 @@ function createVariableSuggestion(): Omit<SuggestionOptions, "editor"> {
           })
           if (!props.clientRect || !popup?.[0]) return
           popup[0].setProps({
-            getReferenceClientRect: props.clientRect as () => DOMRect,
+            getReferenceClientRect: () =>
+              props.clientRect?.() ?? new DOMRect(0, 0, 0, 0),
           })
         },
         onKeyDown: (props) => {

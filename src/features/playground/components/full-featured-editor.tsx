@@ -164,6 +164,8 @@ const shouldShowTextBubbleMenu = ({
   if (from === to) return false
   if (editor.isActive("table")) return false
   if (editor.isActive("image")) return false
+  if (editor.isActive("contractVariable")) return false
+  if (editor.isActive("pageBreak")) return false
   return true
 }
 

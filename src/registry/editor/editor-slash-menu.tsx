@@ -299,10 +299,13 @@ function createSlashMenuSuggestion(
             editor: props.editor,
           })
 
+          const getReferenceClientRect = () =>
+            props.clientRect?.() ?? new DOMRect(0, 0, 0, 0)
+
           if (!props.clientRect) return
 
           popup = tippy("body", {
-            getReferenceClientRect: props.clientRect as () => DOMRect,
+            getReferenceClientRect,
             appendTo: () => document.body,
             content: component.element,
             showOnCreate: true,
@@ -320,7 +323,8 @@ function createSlashMenuSuggestion(
           if (!props.clientRect || !popup?.[0]) return
 
           popup[0].setProps({
-            getReferenceClientRect: props.clientRect as () => DOMRect,
+            getReferenceClientRect: () =>
+              props.clientRect?.() ?? new DOMRect(0, 0, 0, 0),
           })
         },
 
