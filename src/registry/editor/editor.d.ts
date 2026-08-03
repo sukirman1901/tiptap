@@ -51,6 +51,7 @@ export type EditorActionKey =
   | "toggleHeaderCell"
   | "toggleHeaderColumn"
   | "toggleHeaderRow"
+  | "toggleTableBorders"
   | "underline"
   | "undo"
   | "unsetHighlightColor"

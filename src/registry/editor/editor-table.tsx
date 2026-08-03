@@ -8,10 +8,11 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { DropdownMenuContent as DropdownMenuContentPrimitive } from "@radix-ui/react-dropdown-menu"
-import { Table } from "@tiptap/extension-table"
+import { Table, TableView } from "@tiptap/extension-table"
 import { TableCell } from "@tiptap/extension-table-cell"
 import { TableHeader } from "@tiptap/extension-table-header"
 import { TableRow } from "@tiptap/extension-table-row"
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model"
 import { BubbleMenu, useEditorState, type Editor } from "@tiptap/react"
 import { Table as TableIcon } from "lucide-react"
 import {
@@ -28,13 +29,68 @@ import {
   ChevronDown,
   Columns3,
   Combine,
+  Grid2x2,
   Rows3,
   Split,
+  Square,
   TableProperties,
   Trash2,
 } from "lucide-react"
 import * as React from "react"
 import { EditorContext, createEditorExtension } from "./editor"
+
+declare module "@tiptap/core" {
+  interface Commands<ReturnType> {
+    tableBorders: {
+      /** Show or hide visible cell borders (layout / alignment tables). */
+      toggleTableBorders: () => ReturnType
+      setTableBorders: (withBorders: boolean) => ReturnType
+    }
+  }
+}
+
+const TABLE_BASE_CLASS = cn(
+  "w-full caption-bottom text-sm my-4 border-collapse table-fixed",
+  "[&.resize-cursor]:cursor-col-resize"
+)
+
+/**
+ * TipTap's default TableView (used when resizable) builds a bare <table>
+ * and ignores HTMLAttributes / custom attrs — so data-borders never hit the DOM.
+ */
+class BorderAwareTableView extends TableView {
+  constructor(node: ProseMirrorNode, cellMinWidth: number) {
+    super(node, cellMinWidth)
+    this.syncDom(node)
+  }
+
+  update(node: ProseMirrorNode) {
+    const ok = super.update(node)
+    if (ok) this.syncDom(node)
+    return ok
+  }
+
+  private syncDom(node: ProseMirrorNode) {
+    this.table.className = TABLE_BASE_CLASS
+    this.table.dataset.borders =
+      node.attrs.withBorders === false ? "false" : "true"
+  }
+}
+
+/** Editor-only styles: hide grid when data-borders=false (cells keep layout). */
+const TABLE_BORDER_STYLES = `
+  .ProseMirror table[data-borders="false"] td,
+  .ProseMirror table[data-borders="false"] th {
+    border-color: transparent !important;
+    background-color: transparent !important;
+    color: inherit;
+    font-weight: inherit;
+  }
+  .ProseMirror table[data-borders="false"] thead,
+  .ProseMirror table[data-borders="false"] tbody tr {
+    border-color: transparent !important;
+  }
+`
 
 // =============================================================================
 // EditorTableExtension
@@ -45,22 +101,59 @@ export interface EditorTableOptions {
   HTMLAttributes?: Record<string, unknown>
 }
 
-export const EditorTableExtension = Table.configure({
+export const EditorTableExtension = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      withBorders: {
+        default: true,
+        parseHTML: (element) =>
+          element.getAttribute("data-borders") !== "false",
+        renderHTML: (attributes) => ({
+          "data-borders":
+            attributes.withBorders === false ? "false" : "true",
+        }),
+      },
+    }
+  },
+
+  addCommands() {
+    return {
+      ...this.parent?.(),
+      toggleTableBorders:
+        () =>
+        ({ commands, editor }) => {
+          if (!editor.isActive("table")) return false
+          const withBorders =
+            editor.getAttributes("table").withBorders !== false
+          return commands.updateAttributes("table", {
+            withBorders: !withBorders,
+          })
+        },
+      setTableBorders:
+        (withBorders: boolean) =>
+        ({ commands, editor }) => {
+          if (!editor.isActive("table")) return false
+          return commands.updateAttributes("table", { withBorders })
+        },
+    }
+  },
+}).configure({
   resizable: true,
+  View: BorderAwareTableView,
   HTMLAttributes: {
-    class: cn(
-      "w-full caption-bottom text-sm my-4 border border-border",
-      "border-collapse table-fixed",
-      // Resize cursor when resizing
-      "[&.resize-cursor]:cursor-col-resize"
-    ),
+    class: TABLE_BASE_CLASS,
   },
 })
+
+function TableBorderStyle() {
+  return <style dangerouslySetInnerHTML={{ __html: TABLE_BORDER_STYLES }} />
+}
 
 export const EditorTableRowExtension = TableRow.configure({
   HTMLAttributes: {
     class:
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
   },
 })
 
@@ -99,7 +192,7 @@ export const EditorTableHeaderExtension = TableHeader.extend({
   HTMLAttributes: {
     class: cn(
       "h-10 px-2 text-left align-middle font-medium text-muted-foreground",
-      "border-b border-r last:border-r-0 bg-muted/10",
+      "border border-border bg-muted/10",
       "relative box-border min-w-[1em]",
       "[&>p]:m-0",
       // Selected cell overlay using Tailwind after: pseudo-element
@@ -143,8 +236,7 @@ export const EditorTableCellExtension = TableCell.extend({
 }).configure({
   HTMLAttributes: {
     class: cn(
-      "p-2 align-middle border-b",
-      "[&:not(:last-child)]:border-r",
+      "p-2 align-middle border border-border",
       "relative box-border min-w-[1em]",
       "[&>p]:m-0",
       // Selected cell overlay using Tailwind after: pseudo-element
@@ -267,6 +359,15 @@ export const EditorTableExtensions = createEditorExtension({
         editor.can().chain().focus().toggleHeaderCell().run(),
     },
     {
+      key: "toggleTableBorders",
+      icon: Grid2x2,
+      label: "Toggle Borders",
+      description: "Show or hide table borders",
+      execute: (editor: Editor) =>
+        editor.chain().focus().toggleTableBorders().run(),
+      canExecute: (editor: Editor) => editor.isActive("table"),
+    },
+    {
       key: "mergeOrSplit",
       label: "Merge or Split",
       execute: (editor: Editor) => editor.chain().focus().mergeOrSplit().run(),
@@ -309,6 +410,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
     canSplitCell = false,
     canDeleteColumn = false,
     canDeleteRow = false,
+    withBorders = true,
   } = useEditorState({
     editor: editor ?? null,
     selector: ({
@@ -318,6 +420,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
       canSplitCell: boolean
       canDeleteColumn: boolean
       canDeleteRow: boolean
+      withBorders: boolean
     } => {
       if (!e) {
         return {
@@ -325,6 +428,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
           canSplitCell: false,
           canDeleteColumn: false,
           canDeleteRow: false,
+          withBorders: true,
         }
       }
       return {
@@ -332,6 +436,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
         canSplitCell: e.can().splitCell(),
         canDeleteColumn: e.can().deleteColumn(),
         canDeleteRow: e.can().deleteRow(),
+        withBorders: e.getAttributes("table").withBorders !== false,
       }
     },
   }) ?? {}
@@ -339,7 +444,9 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
   if (!editor) return null
 
   return (
-    <BubbleMenu
+    <>
+      <TableBorderStyle />
+      <BubbleMenu
       {...props}
       editor={editor}
       tippyOptions={{
@@ -585,6 +692,25 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
           </DropdownMenuContentPrimitive>
         </DropdownMenu>
 
+        {/* Borders — layout tables often hide the grid */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={cn(
+            "h-7 gap-1 px-2 text-xs",
+            !withBorders && "bg-accent text-accent-foreground"
+          )}
+          onClick={() => editor.chain().focus().toggleTableBorders().run()}
+          title={withBorders ? "Sembunyikan border" : "Tampilkan border"}
+        >
+          {withBorders ? (
+            <Grid2x2 className="size-3.5" />
+          ) : (
+            <Square className="size-3.5" />
+          )}
+          Border
+        </Button>
+
         {/* Quick Delete Actions */}
         <div className="ml-0.5 flex items-center gap-0.5 border-l pl-1">
           <Button
@@ -621,5 +747,6 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
         </Button>
       </div>
     </BubbleMenu>
+    </>
   )
 }
