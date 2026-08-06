@@ -20,7 +20,7 @@ export const EditorHighlightExtension = createEditorExtension({
     {
       key: "highlight",
       icon: Highlighter,
-      label: "Highlight",
+      label: "Sorotan",
       description: "Highlight selected text",
       execute: (editor: Editor) =>
         editor.chain().focus().toggleHighlight().run(),

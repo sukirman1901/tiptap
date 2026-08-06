@@ -91,9 +91,9 @@ export function createEditorPlaceholderExtension(
       options.placeholder ??
       (({ node }) => {
         if (node.type.name === "heading") {
-          return `Heading ${node.attrs.level}`
+          return `Judul ${node.attrs.level}`
         }
-        return "Type '/' for commands..."
+        return "Ketik / untuk perintah…"
       }),
     emptyEditorClass: options.emptyEditorClass ?? "is-editor-empty",
     emptyNodeClass: options.emptyNodeClass ?? "is-empty",

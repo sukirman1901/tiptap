@@ -39,7 +39,7 @@ import {
   X,
 } from "lucide-react"
 import * as React from "react"
-import { EditorContext, createEditorExtension } from "./editor"
+import { EDITOR_BUBBLE_TIPPY_OPTIONS, EditorContext, createEditorExtension } from "./editor"
 
 // =============================================================================
 // Types & Configuration
@@ -1127,7 +1127,7 @@ export function EditorBubbleMenuImage() {
     <BubbleMenu
       editor={editor}
       tippyOptions={{
-        duration: 100,
+        ...EDITOR_BUBBLE_TIPPY_OPTIONS,
         placement: "bottom",
         offset: [0, 8],
         getReferenceClientRect: () => {
@@ -1173,7 +1173,7 @@ export function EditorBubbleMenuImage() {
       shouldShow={({ editor: e }) => e.isActive("image")}
       className="w-fit"
     >
-      <div className="bg-popover flex items-center gap-1 rounded-md border p-1 shadow-md">
+      <div className="bg-popover text-popover-foreground flex items-center gap-1 rounded-md border p-1 shadow-md">
         {/* Size Controls */}
         <div className="flex items-center gap-1">
           <Input

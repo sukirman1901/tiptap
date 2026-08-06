@@ -4,11 +4,11 @@
  * Full-Featured Editor
  *
  * Contract workspace editor: A4 canvas, formatting toolbar, slash menu,
- * tables/images, and live document variables from the meta form.
+ * tables/images, and live document variables from the draft store.
  */
 
 import type { Editor } from "@tiptap/react"
-import { useState, type ReactNode } from "react"
+import { useEffect, useRef, useState, type ReactNode } from "react"
 
 import {
   EditorBubbleMenu,
@@ -24,41 +24,32 @@ import {
   EditorBubbleMenuPopoverContent,
   EditorBubbleMenuPopoverTrigger,
   EditorBubbleMenuSeparator,
-  EditorButton,
-  EditorButtonGroup,
   EditorContent,
-  EditorDropdown,
-  EditorLabel,
   EditorProvider,
-  EditorSeparator,
-  EditorToolbar,
   useEditor,
 } from "@/registry/editor/editor"
 
-import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
+import { cn } from "@/lib/utils"
+import type { DocumentRole } from "@/features/documents/domain/actions"
+import type { DocumentStatus } from "@/features/documents/domain/status"
 
 import { DocumentCanvas } from "./document-canvas"
-import { DUMMY_CONTRACT_CONTENT } from "./dummy-contract-content"
-import { ContractMetaForm } from "./contract-meta-form"
-import { ContractMetaStoreSync } from "./contract-meta-store"
+import { DocumentBar } from "./document-bar"
+import {
+  ContractDraftStoreSync,
+  getDraftStoreSnapshot,
+} from "./contract-draft-store"
+import {
+  type ContractComment,
+  type ContractDraft,
+} from "./contract-draft"
+import { ContractEditorToolbar } from "./contract-editor-toolbar"
 import { EditorContractVariableExtension } from "./editor-contract-variable"
-import { CONTRACT_VARIABLES } from "./contract-variables"
-import { type ContractMeta } from "./contract-meta"
+import { EditorReviewCommentsExtension } from "./editor-review-comments"
+import {
+  focusCommentInEditor,
+  ReviewCommentBubble,
+} from "./review-comment-bubble"
 
 import { EditorImageExtension } from "@/registry/editor/editor-image"
 import { EditorTableExtensions } from "@/registry/editor/editor-table"
@@ -78,15 +69,10 @@ import {
   EditorColorPickerItem,
   EditorColorPickerLabel,
   EditorColorPickerTrigger,
-  EditorToolbarHighlightColor,
-  EditorToolbarTextColor,
 } from "@/registry/editor/editor-color"
 import { EditorEssentialExtension } from "@/registry/editor/editor-essential"
-import {
-  EditorFontExtension,
-  EditorFontFamilySelect,
-  EditorFontSizeSelect,
-} from "@/registry/editor/editor-font"
+import { EditorFontExtension } from "@/registry/editor/editor-font"
+import { EditorSpacingExtension } from "@/registry/editor/editor-spacing"
 import { EditorHighlightExtension } from "@/registry/editor/editor-highlight"
 import { EditorIndentExtension } from "@/registry/editor/editor-indent"
 import { EditorLinkExtensions } from "@/registry/editor/editor-link"
@@ -95,63 +81,42 @@ import { EditorPageGapExtension } from "@/registry/editor/editor-page-gap"
 import { EditorPlaceholderExtension } from "@/registry/editor/editor-placeholder"
 import { EditorTaskListExtensions } from "@/registry/editor/editor-task-list"
 import {
-  AlignCenter,
-  AlignJustify,
-  AlignLeft,
-  AlignRight,
   Bold,
   Braces,
-  CheckSquare,
-  Code,
-  ImageUp,
   Italic,
   Link2,
-  List,
-  ListOrdered,
-  MoreVertical,
-  Redo,
   SeparatorHorizontal,
   Strikethrough,
-  Table,
   Type,
   Underline,
-  Undo,
-  IndentDecrease,
-  IndentIncrease,
-  PanelRight,
 } from "lucide-react"
 
-// =============================================================================
-// Color Palettes (defined at usage place for customization flexibility)
-// =============================================================================
-
 const TEXT_COLORS = [
-  { name: "default", value: "inherit", label: "Default" },
-  { name: "gray", value: "#9b9a97", label: "Gray" },
-  { name: "brown", value: "#64473a", label: "Brown" },
-  { name: "orange", value: "#d9730d", label: "Orange" },
-  { name: "yellow", value: "#cb8700", label: "Yellow" },
-  { name: "green", value: "#448361", label: "Green" },
-  { name: "blue", value: "#337ea9", label: "Blue" },
-  { name: "purple", value: "#9065b0", label: "Purple" },
-  { name: "pink", value: "#c14c8a", label: "Pink" },
-  { name: "red", value: "#d44c47", label: "Red" },
+  { name: "default", value: "inherit", label: "Bawaan" },
+  { name: "gray", value: "#9b9a97", label: "Abu-abu" },
+  { name: "brown", value: "#64473a", label: "Cokelat" },
+  { name: "orange", value: "#d9730d", label: "Oranye" },
+  { name: "yellow", value: "#cb8700", label: "Kuning" },
+  { name: "green", value: "#448361", label: "Hijau" },
+  { name: "blue", value: "#337ea9", label: "Biru" },
+  { name: "purple", value: "#9065b0", label: "Ungu" },
+  { name: "pink", value: "#c14c8a", label: "Merah muda" },
+  { name: "red", value: "#d44c47", label: "Merah" },
 ] as const
 
 const HIGHLIGHT_COLORS = [
-  { name: "default", value: "transparent", label: "No background" },
-  { name: "gray", value: "#e3e2e0", label: "Gray" },
-  { name: "brown", value: "#eee0da", label: "Brown" },
-  { name: "orange", value: "#fadec9", label: "Orange" },
-  { name: "yellow", value: "#fdecc8", label: "Yellow" },
-  { name: "green", value: "#dbeddb", label: "Green" },
-  { name: "blue", value: "#d3e5ef", label: "Blue" },
-  { name: "purple", value: "#e8deee", label: "Purple" },
-  { name: "pink", value: "#f5e0e9", label: "Pink" },
-  { name: "red", value: "#ffe2dd", label: "Red" },
+  { name: "default", value: "transparent", label: "Tanpa latar" },
+  { name: "gray", value: "#e3e2e0", label: "Abu-abu" },
+  { name: "brown", value: "#eee0da", label: "Cokelat" },
+  { name: "orange", value: "#fadec9", label: "Oranye" },
+  { name: "yellow", value: "#fdecc8", label: "Kuning" },
+  { name: "green", value: "#dbeddb", label: "Hijau" },
+  { name: "blue", value: "#d3e5ef", label: "Biru" },
+  { name: "purple", value: "#e8deee", label: "Ungu" },
+  { name: "pink", value: "#f5e0e9", label: "Merah muda" },
+  { name: "red", value: "#ffe2dd", label: "Merah" },
 ] as const
 
-// Bubble menu should show for text selection, excluding tables/images
 const shouldShowTextBubbleMenu = ({
   editor,
   from,
@@ -164,13 +129,12 @@ const shouldShowTextBubbleMenu = ({
   if (from === to) return false
   if (editor.isActive("table")) return false
   if (editor.isActive("image")) return false
-  if (editor.isActive("contractVariable")) return false
   if (editor.isActive("pageBreak")) return false
   return true
 }
 
-const slashMenuItems = [
-  ...defaultSlashMenuItems,
+const staticSlashMenuItems = [
+  ...defaultSlashMenuItems.filter((item) => item.title !== "Checklist"),
   {
     title: "Henti halaman",
     description: "Sisipkan page break untuk cetak/PDF",
@@ -180,422 +144,308 @@ const slashMenuItems = [
       editor?.chain().focus().setPageBreak().run()
     },
   },
-  ...CONTRACT_VARIABLES.map((v) => ({
-    title: `{${v.token}}`,
-    description: `Variabel: ${v.label}`,
-    icon: Braces,
-    searchTerms: ["var", "variable", "variabel", ...v.searchTerms],
-    command: (editor: Editor | null) => {
-      editor?.chain().focus().insertContractVariable(v.key).run()
-    },
-  })),
 ]
 
-function ToolbarOverflowMenu() {
-  const { editor, registry } = useEditor()
-  if (!editor) return null
+function ReviewCommentsSync({
+  comments,
+  activeId,
+}: {
+  comments: ContractComment[]
+  activeId: string | null
+}) {
+  const { editor } = useEditor()
+  useEffect(() => {
+    if (!editor) return
+    editor.commands.setReviewComments(comments)
+  }, [editor, comments])
+  useEffect(() => {
+    if (!editor) return
+    editor.commands.setActiveReviewComment(activeId)
+  }, [editor, activeId])
+  return null
+}
 
-  const run = (action: string) => {
-    registry.execute(editor, action)
-  }
-
-  return (
-    <DropdownMenu modal={false}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-8 shrink-0"
-          aria-label="Lainnya"
-        >
-          <MoreVertical className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="max-h-[min(70dvh,24rem)] w-56 overflow-y-auto p-1"
-      >
-        {/* Tools that hide from the main bar on smaller breakpoints */}
-        <div className="lg:hidden">
-          <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-            Font
-          </DropdownMenuLabel>
-          <div
-            className="flex gap-1.5 px-2 pb-1.5"
-            onPointerDown={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            <EditorFontFamilySelect className="h-8 min-w-0 flex-1 text-xs" />
-            <EditorFontSizeSelect className="h-8 w-[5.75rem] shrink-0 text-xs" />
-          </div>
-          <DropdownMenuSeparator />
-        </div>
-
-        <div className="md:hidden">
-          <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-            Warna
-          </DropdownMenuLabel>
-          <div onPointerDown={(e) => e.stopPropagation()}>
-            <EditorToolbarTextColor variant="menu" />
-            <EditorToolbarHighlightColor variant="menu" />
-          </div>
-          <DropdownMenuSeparator />
-        </div>
-
-        <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-          Format
-        </DropdownMenuLabel>
-        <div className="sm:hidden">
-          <DropdownMenuItem onSelect={() => run("underline")} className="gap-2">
-            <Underline className="size-4" />
-            Garis bawah
-          </DropdownMenuItem>
-        </div>
-        <DropdownMenuItem onSelect={() => run("strike")} className="gap-2">
-          <Strikethrough className="size-4" />
-          Coret
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("code")} className="gap-2">
-          <Code className="size-4" />
-          Kode sebaris
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("outdent")} className="gap-2">
-          <IndentDecrease className="size-4" />
-          Kurangi indentasi
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("indent")} className="gap-2">
-          <IndentIncrease className="size-4" />
-          Tambah indentasi
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-          Perataan
-        </DropdownMenuLabel>
-        <DropdownMenuItem onSelect={() => run("left")} className="gap-2">
-          <AlignLeft className="size-4" />
-          Kiri
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("center")} className="gap-2">
-          <AlignCenter className="size-4" />
-          Tengah
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("right")} className="gap-2">
-          <AlignRight className="size-4" />
-          Kanan
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("justify")} className="gap-2">
-          <AlignJustify className="size-4" />
-          Rata kiri-kanan
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-          Daftar
-        </DropdownMenuLabel>
-        <DropdownMenuItem onSelect={() => run("bulletList")} className="gap-2">
-          <List className="size-4" />
-          Poin
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("orderedList")} className="gap-2">
-          <ListOrdered className="size-4" />
-          Bernomor
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("taskList")} className="gap-2">
-          <CheckSquare className="size-4" />
-          Checklist
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel className="text-muted-foreground px-2 py-1.5 text-xs font-medium">
-          Sisipkan
-        </DropdownMenuLabel>
-        <DropdownMenuItem onSelect={() => run("setLink")} className="gap-2">
-          <Link2 className="size-4" />
-          Tautan
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("image")} className="gap-2">
-          <ImageUp className="size-4" />
-          Gambar
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("insertTable")} className="gap-2">
-          <Table className="size-4" />
-          Tabel
-        </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => run("pageBreak")} className="gap-2">
-          <SeparatorHorizontal className="size-4" />
-          Henti halaman
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
+function CommentFocusBridge({
+  comment,
+  onDone,
+}: {
+  comment: ContractComment | null
+  onDone: () => void
+}) {
+  const { editor } = useEditor()
+  useEffect(() => {
+    if (!editor || !comment) return
+    focusCommentInEditor(editor, comment)
+    onDone()
+  }, [editor, comment, onDone])
+  return null
 }
 
 interface FullFeaturedEditorProps {
-  content?: string
-  onUpdate?: (html: string) => void
-  meta: ContractMeta
-  onMetaChange: (next: ContractMeta) => void
+  draft: ContractDraft
+  onDraftChange: (next: ContractDraft) => void
   /** Desktop sidebar (lg+). Mobile uses sheet. */
   sidebar?: ReactNode
+  /** Review link mode: read-only + comment on selection */
+  mode?: "edit" | "review"
+  /** Document lifecycle (AgreedDocument workspace) */
+  documentTitle: string
+  documentStatus: DocumentStatus
+  documentRole: DocumentRole
+  onDocumentStatusChange: (status: DocumentStatus) => void
+  onDocumentSave: () => void
+  documentFeedback?: string | null
+  activeCommentId?: string | null
+  onActiveCommentIdChange?: (id: string | null) => void
+  focusComment?: ContractComment | null
+  onFocusCommentHandled?: () => void
+  /** Mobile: open Properti/Komentar sheet */
+  onOpenMobilePanel?: () => void
+  openCommentCount?: number
 }
 
 export function FullFeaturedEditor({
-  content = DUMMY_CONTRACT_CONTENT,
-  onUpdate,
-  meta,
-  onMetaChange,
+  draft,
+  onDraftChange,
   sidebar,
+  mode = "edit",
+  documentTitle,
+  documentStatus,
+  documentRole,
+  onDocumentStatusChange,
+  onDocumentSave,
+  documentFeedback = null,
+  activeCommentId = null,
+  onActiveCommentIdChange,
+  focusComment = null,
+  onFocusCommentHandled,
+  onOpenMobilePanel,
+  openCommentCount = 0,
 }: FullFeaturedEditorProps) {
-  const [infoOpen, setInfoOpen] = useState(false)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  const isReview = mode === "review"
+  const [focusToken, setFocusToken] = useState<ContractComment | null>(null)
+
+  useEffect(() => {
+    if (focusComment) setFocusToken(focusComment)
+  }, [focusComment])
 
   return (
     <EditorProvider
-      content={content}
+      key={mode}
+      content={draft.contentHtml}
+      editable={!isReview}
       extensions={[
-        // Essential extension
         EditorEssentialExtension,
-
-        // Link extension
         EditorLinkExtensions,
-
-        // Task list extension
         EditorTaskListExtensions,
-
-        // Placeholder extension
         EditorPlaceholderExtension,
-
-        // Color extension (includes TextStyle + text color and highlight)
         EditorColorExtension,
-
-        // Font family + size (depends on TextStyle from color extension)
         EditorFontExtension,
-
-        // Indent / outdent
+        EditorSpacingExtension,
         EditorIndentExtension,
-
-        // Page break
         EditorPageBreakExtension,
         EditorPageGapExtension,
-
-        // Contract merge fields ({nilai}, @nilai, …)
         EditorContractVariableExtension,
-
-        // Highlight extension
         EditorHighlightExtension,
-
-        // Image with base64 upload (for demo, use server upload in production)
+        EditorReviewCommentsExtension,
         EditorImageExtension.configure({
           uploadStrategy: "base64",
-          maxFileSize: 10 * 1024 * 1024, // 10MB
+          maxFileSize: 10 * 1024 * 1024,
         }),
-
-        // Table with resizable columns
         EditorTableExtensions,
-
-        // Slash menu
-        EditorSlashMenuExtension.configure({
-          items: slashMenuItems,
-        }),
+        ...(isReview
+          ? []
+          : [
+              EditorSlashMenuExtension.configure({
+                items: () => [
+                  ...staticSlashMenuItems,
+                  ...getDraftStoreSnapshot().fields.map((f) => ({
+                    title: `{${f.token}}`,
+                    description: `Properti: ${f.label}`,
+                    icon: Braces,
+                    searchTerms: [
+                      "var",
+                      "variabel",
+                      "properti",
+                      f.token,
+                      f.label.toLowerCase(),
+                    ],
+                    command: (editor: Editor | null) => {
+                      editor
+                        ?.chain()
+                        .focus()
+                        .insertContractVariable({ id: f.id, token: f.token })
+                        .run()
+                    },
+                  })),
+                ],
+              }),
+            ]),
       ]}
       onUpdate={({ editor }) => {
-        onUpdate?.(editor.getHTML())
+        if (isReview) return
+        const html = editor.getHTML()
+        onDraftChange({ ...draftRef.current, contentHtml: html })
       }}
     >
-      <ContractMetaStoreSync meta={meta} />
+      <ContractDraftStoreSync fields={draft.fields} values={draft.values} />
+      <ReviewCommentsSync
+        comments={draft.comments ?? []}
+        activeId={activeCommentId}
+      />
+      <CommentFocusBridge
+        comment={focusToken}
+        onDone={() => {
+          setFocusToken(null)
+          onFocusCommentHandled?.()
+        }}
+      />
 
-      <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-4 lg:flex-row lg:gap-0 lg:py-4">
-        {/* Digdaya-style wrap: toolbar + paper stage in one bordered card */}
+      <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-4 lg:flex-row lg:items-start lg:py-4">
         <div className="border-border/60 bg-background flex min-h-[70dvh] min-w-0 flex-1 flex-col overflow-hidden rounded-lg border lg:min-h-[calc(100dvh-3.5rem-2rem)]">
-          <EditorToolbar className="bg-background flex max-w-full shrink-0 flex-nowrap items-center gap-0 border-b px-3 py-1.5 sm:px-4">
-              <EditorButtonGroup>
-                <EditorButton action="undo">
-                  <Undo className="size-4" />
-                </EditorButton>
-                <EditorButton action="redo">
-                  <Redo className="size-4" />
-                </EditorButton>
-              </EditorButtonGroup>
-
-              <EditorSeparator />
-
-              {/* Block + font — one cluster */}
-              <EditorButtonGroup>
-                <EditorDropdown
-                  actions={[
-                    "paragraph",
-                    "heading1",
-                    "heading2",
-                    "heading3",
-                    "blockquote",
-                  ]}
-                >
-                  <EditorLabel pattern=":icon :label" />
-                </EditorDropdown>
-                <EditorFontFamilySelect className="hidden w-[10rem] lg:flex" />
-                <EditorFontSizeSelect className="hidden w-[5.25rem] lg:flex" />
-              </EditorButtonGroup>
-
-              <EditorSeparator />
-
-              <EditorButtonGroup>
-                <EditorButton action="bold">
-                  <Bold className="size-4" />
-                </EditorButton>
-                <EditorButton action="italic">
-                  <Italic className="size-4" />
-                </EditorButton>
-                <EditorButton action="underline" className="max-sm:hidden">
-                  <Underline className="size-4" />
-                </EditorButton>
-                <EditorButton action="strike" className="max-sm:hidden">
-                  <Strikethrough className="size-4" />
-                </EditorButton>
-              </EditorButtonGroup>
-
-              <EditorSeparator className="max-md:hidden" />
-
-              <EditorButtonGroup className="max-md:hidden">
-                <EditorToolbarTextColor />
-                <EditorToolbarHighlightColor />
-              </EditorButtonGroup>
-
-              <div className="ml-auto flex shrink-0 items-center gap-1">
-                <Sheet open={infoOpen} onOpenChange={setInfoOpen}>
-                  <SheetTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 shrink-0 lg:hidden"
-                      aria-label="Informasi dokumen"
-                      title="Informasi dokumen"
-                    >
-                      <PanelRight className="size-4" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent
-                    side="right"
-                    className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm"
-                  >
-                    <SheetHeader className="sr-only">
-                      <SheetTitle>Informasi dokumen</SheetTitle>
-                    </SheetHeader>
-                    <ContractMetaForm
-                      bare
-                      meta={meta}
-                      onChange={onMetaChange}
-                      className="px-4 py-5"
-                    />
-                  </SheetContent>
-                </Sheet>
-
-                <ToolbarOverflowMenu />
-              </div>
-          </EditorToolbar>
+          <DocumentBar
+            draft={draft}
+            title={documentTitle}
+            status={documentStatus}
+            role={documentRole}
+            onStatusChange={onDocumentStatusChange}
+            onSave={onDocumentSave}
+            mode={mode}
+            feedback={documentFeedback}
+          />
+          {!isReview && (
+            <ContractEditorToolbar
+              onOpenMobilePanel={onOpenMobilePanel}
+              commentCount={openCommentCount}
+            />
+          )}
 
           <DocumentCanvas>
-            <EditorContent className="prose dark:prose-invert max-w-none [&_.ProseMirror]:min-h-[40dvh] [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:text-justify md:[&_.ProseMirror]:min-h-0" />
+            <EditorContent
+              className={cn(
+                "prose dark:prose-invert max-w-none",
+                "[&_.ProseMirror]:min-h-[40dvh] [&_.ProseMirror]:outline-none md:[&_.ProseMirror]:min-h-0",
+                "[&_.ProseMirror]:font-['Times_New_Roman',Times,serif]",
+                "[&_.ProseMirror]:text-[12pt]",
+                "[&_.ProseMirror]:leading-[1.15]",
+                "[&_.ProseMirror_p]:my-0 [&_.ProseMirror_p]:text-justify",
+                "[&_.ProseMirror_h1]:my-0 [&_.ProseMirror_h2]:my-0 [&_.ProseMirror_h3]:my-0",
+                "[&_.ProseMirror_h4]:my-0 [&_.ProseMirror_h5]:my-0 [&_.ProseMirror_h6]:my-0",
+                "[&_.ProseMirror_blockquote]:my-0",
+                "[&_.ProseMirror_li]:my-0",
+                "[&_.ProseMirror_ul]:my-0 [&_.ProseMirror_ol]:my-0",
+                "[&_.ProseMirror_li::marker]:[font-family:inherit] [&_.ProseMirror_li::marker]:[font-size:inherit]",
+                isReview && "[&_.ProseMirror]:cursor-text"
+              )}
+            />
           </DocumentCanvas>
         </div>
 
-        <div className="hidden lg:block">{sidebar}</div>
+        <div className="hidden lg:contents">{sidebar}</div>
 
-        {/* Composable Bubble Menu for Text Selection */}
-        <EditorBubbleMenu shouldShow={shouldShowTextBubbleMenu}>
-          <EditorBubbleMenuContent>
-            <EditorBubbleMenuGroup>
-              <EditorBubbleMenuButton action="bold" title="Bold">
-                <Bold className="size-3.5" />
-              </EditorBubbleMenuButton>
-              <EditorBubbleMenuButton action="italic" title="Italic">
-                <Italic className="size-3.5" />
-              </EditorBubbleMenuButton>
-              <EditorBubbleMenuButton action="underline" title="Underline">
-                <Underline className="size-3.5" />
-              </EditorBubbleMenuButton>
-              <EditorBubbleMenuButton action="strike" title="Strikethrough">
-                <Strikethrough className="size-3.5" />
-              </EditorBubbleMenuButton>
-              <EditorBubbleMenuButton action="code" title="Code">
-                <Code className="size-3.5" />
-              </EditorBubbleMenuButton>
-            </EditorBubbleMenuGroup>
-
-            <EditorBubbleMenuSeparator />
-
-            <EditorColorPicker>
-              <EditorColorPickerTrigger>
-                <EditorBubbleMenuButton title="Text color" className="relative">
-                  <Type className="z-10 size-3.5" />
-                  <EditorColorPickerIndicator />
+        {isReview ? (
+          <ReviewCommentBubble
+            draft={draft}
+            onDraftChange={(next) => {
+              onDraftChange(next)
+              const last = next.comments[next.comments.length - 1]
+              if (last) onActiveCommentIdChange?.(last.id)
+            }}
+            enabled
+          />
+        ) : (
+          <EditorBubbleMenu shouldShow={shouldShowTextBubbleMenu}>
+            <EditorBubbleMenuContent>
+              <EditorBubbleMenuGroup>
+                <EditorBubbleMenuButton action="bold" title="Tebal">
+                  <Bold className="size-3.5" />
                 </EditorBubbleMenuButton>
-              </EditorColorPickerTrigger>
-              <EditorColorPickerContent align="start">
-                <EditorColorPickerLabel>Text Color</EditorColorPickerLabel>
-                <EditorColorPickerGrid>
-                  {TEXT_COLORS.map((c) => (
-                    <EditorColorPickerItem
-                      key={c.name}
-                      color={c.value}
-                      variant="text"
-                      title={c.label}
-                    />
-                  ))}
-                  <EditorColorPickerCustom variant="text" />
-                </EditorColorPickerGrid>
-
-                <EditorColorPickerLabel>Highlight</EditorColorPickerLabel>
-                <EditorColorPickerGrid>
-                  {HIGHLIGHT_COLORS.map((c) => (
-                    <EditorColorPickerItem
-                      key={c.name}
-                      color={c.value}
-                      variant="highlight"
-                      title={c.label}
-                    />
-                  ))}
-                  <EditorColorPickerCustom variant="highlight" />
-                </EditorColorPickerGrid>
-              </EditorColorPickerContent>
-            </EditorColorPicker>
-
-            <EditorBubbleMenuSeparator />
-
-            <EditorBubbleMenuPopover>
-              <EditorBubbleMenuPopoverTrigger asChild>
-                <EditorBubbleMenuButton title="Add Link">
-                  <Link2 className="size-3.5" />
+                <EditorBubbleMenuButton action="italic" title="Miring">
+                  <Italic className="size-3.5" />
                 </EditorBubbleMenuButton>
-              </EditorBubbleMenuPopoverTrigger>
-              <EditorBubbleMenuPopoverContent align="end">
-                <EditorBubbleMenuForm
-                  className="flex gap-4"
-                  onSubmit={(values, editor) =>
-                    editor
-                      ?.chain()
-                      .focus()
-                      .extendMarkRange("link")
-                      .setLink({ href: values?.href })
-                      .run()
-                  }
-                >
-                  <EditorBubbleMenuInput
-                    name="href"
-                    binding="link.href"
-                    placeholder="https://..."
-                    type="url"
-                  />
-                  <EditorBubbleMenuFormActions>
-                    <EditorBubbleMenuFormCancel />
-                    <EditorBubbleMenuFormSubmit />
-                  </EditorBubbleMenuFormActions>
-                </EditorBubbleMenuForm>
-              </EditorBubbleMenuPopoverContent>
-            </EditorBubbleMenuPopover>
-          </EditorBubbleMenuContent>
-        </EditorBubbleMenu>
+                <EditorBubbleMenuButton action="underline" title="Garis bawah">
+                  <Underline className="size-3.5" />
+                </EditorBubbleMenuButton>
+                <EditorBubbleMenuButton action="strike" title="Coret">
+                  <Strikethrough className="size-3.5" />
+                </EditorBubbleMenuButton>
+              </EditorBubbleMenuGroup>
+
+              <EditorBubbleMenuSeparator />
+
+              <EditorColorPicker>
+                <EditorColorPickerTrigger>
+                  <EditorBubbleMenuButton title="Warna teks" className="relative">
+                    <Type className="z-10 size-3.5" />
+                    <EditorColorPickerIndicator />
+                  </EditorBubbleMenuButton>
+                </EditorColorPickerTrigger>
+                <EditorColorPickerContent align="start">
+                  <EditorColorPickerLabel>Warna teks</EditorColorPickerLabel>
+                  <EditorColorPickerGrid>
+                    {TEXT_COLORS.map((c) => (
+                      <EditorColorPickerItem
+                        key={c.name}
+                        color={c.value}
+                        variant="text"
+                        title={c.label}
+                      />
+                    ))}
+                    <EditorColorPickerCustom variant="text" />
+                  </EditorColorPickerGrid>
+
+                  <EditorColorPickerLabel>Sorotan</EditorColorPickerLabel>
+                  <EditorColorPickerGrid>
+                    {HIGHLIGHT_COLORS.map((c) => (
+                      <EditorColorPickerItem
+                        key={c.name}
+                        color={c.value}
+                        variant="highlight"
+                        title={c.label}
+                      />
+                    ))}
+                    <EditorColorPickerCustom variant="highlight" />
+                  </EditorColorPickerGrid>
+                </EditorColorPickerContent>
+              </EditorColorPicker>
+
+              <EditorBubbleMenuSeparator />
+
+              <EditorBubbleMenuPopover>
+                <EditorBubbleMenuPopoverTrigger asChild>
+                  <EditorBubbleMenuButton title="Tautan">
+                    <Link2 className="size-3.5" />
+                  </EditorBubbleMenuButton>
+                </EditorBubbleMenuPopoverTrigger>
+                <EditorBubbleMenuPopoverContent align="end">
+                  <EditorBubbleMenuForm
+                    className="flex gap-4"
+                    onSubmit={(values, ed) =>
+                      ed
+                        ?.chain()
+                        .focus()
+                        .extendMarkRange("link")
+                        .setLink({ href: values?.href })
+                        .run()
+                    }
+                  >
+                    <EditorBubbleMenuInput
+                      name="href"
+                      placeholder="https://"
+                      className="min-w-[12rem]"
+                    />
+                    <EditorBubbleMenuFormActions>
+                      <EditorBubbleMenuFormCancel />
+                      <EditorBubbleMenuFormSubmit />
+                    </EditorBubbleMenuFormActions>
+                  </EditorBubbleMenuForm>
+                </EditorBubbleMenuPopoverContent>
+              </EditorBubbleMenuPopover>
+            </EditorBubbleMenuContent>
+          </EditorBubbleMenu>
+        )}
       </div>
     </EditorProvider>
   )

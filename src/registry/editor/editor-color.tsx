@@ -448,7 +448,7 @@ export const EditorColorExtension = createEditorExtension({
     {
       key: "setTextColor",
       icon: Type,
-      label: "Text Color",
+      label: "Warna teks",
       description: "Change text color",
       execute: (editor: Editor, options) =>
         editor
@@ -463,7 +463,7 @@ export const EditorColorExtension = createEditorExtension({
     {
       key: "unsetTextColor",
       icon: Type,
-      label: "Remove Text Color",
+      label: "Hapus warna teks",
       description: "Remove text color",
       execute: (editor: Editor) => editor.chain().focus().unsetColor().run(),
       canExecute: (editor: Editor) =>
@@ -473,7 +473,7 @@ export const EditorColorExtension = createEditorExtension({
     {
       key: "setHighlightColor",
       icon: Type,
-      label: "Highlight",
+      label: "Sorotan",
       description: "Highlight selected text",
       execute: (editor: Editor, options) =>
         editor
@@ -487,7 +487,7 @@ export const EditorColorExtension = createEditorExtension({
     {
       key: "unsetHighlightColor",
       icon: Type,
-      label: "Remove Highlight",
+      label: "Hapus sorotan",
       description: "Remove highlight",
       execute: (editor: Editor) =>
         editor.chain().focus().unsetHighlight().run(),
@@ -515,7 +515,7 @@ const TOOLBAR_TEXT_COLORS = [
 ] as const
 
 const TOOLBAR_HIGHLIGHT_COLORS = [
-  { name: "default", value: "transparent", label: "No background" },
+  { name: "default", value: "transparent", label: "Tanpa latar" },
   { name: "gray", value: "#e3e2e0", label: "Gray" },
   { name: "brown", value: "#eee0da", label: "Brown" },
   { name: "orange", value: "#fadec9", label: "Orange" },

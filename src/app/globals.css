@@ -135,3 +135,39 @@
     color: var(--background);
   }
 }
+
+/* TipTap BubbleMenu — neutralize tippy dark chrome (icons inherit white otherwise) */
+.tippy-box[data-theme~="editor-bubble"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+.tippy-box[data-theme~="editor-bubble"] > .tippy-content {
+  padding: 0 !important;
+  color: inherit !important;
+}
+
+.tippy-box[data-theme~="editor-bubble"] > .tippy-arrow {
+  display: none !important;
+}
+
+.tippy-box[data-theme~="slash-menu"],
+.tippy-box[data-theme~="contract-variable-menu"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+}
+
+.tippy-box[data-theme~="slash-menu"] > .tippy-content,
+.tippy-box[data-theme~="contract-variable-menu"] > .tippy-content {
+  padding: 0 !important;
+  color: inherit !important;
+}
+
+.tippy-box[data-theme~="slash-menu"] > .tippy-arrow,
+.tippy-box[data-theme~="contract-variable-menu"] > .tippy-arrow {
+  display: none !important;
+}

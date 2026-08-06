@@ -37,8 +37,8 @@ export const EditorTaskListExtensions = createEditorExtension({
     {
       key: "taskList",
       icon: CheckSquare,
-      label: "Task List",
-      description: "Create a task list with checkboxes",
+      label: "Daftar tugas",
+      description: "Buat daftar tugas dengan kotak centang",
       execute: (editor: Editor) =>
         editor.chain().focus().toggleTaskList().run(),
       canExecute: (editor: Editor) =>

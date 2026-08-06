@@ -1,4 +1,4 @@
-# Editor Kontrak
+# Agreed
 
 Workspace penyusunan kontrak berbasis [TipTap](https://tiptap.dev/), dengan kanvas kertas A4 dan variabel dokumen yang terhubung ke form.
 

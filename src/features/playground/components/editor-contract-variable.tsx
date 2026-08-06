@@ -15,42 +15,68 @@ import { Braces } from "lucide-react"
 import * as React from "react"
 import tippy, { type Instance, type Props } from "tippy.js"
 
-import { useContractMetaStore } from "./contract-meta-store"
 import {
-  CONTRACT_VARIABLES,
-  findVariableByQuery,
-  isContractVariableKey,
-  resolveContractVariable,
-  type ContractVariableDef,
-  type ContractVariableKey,
-} from "./contract-variables"
+  findFieldByToken,
+  getDraftStoreSnapshot,
+  useContractDraftStore,
+} from "./contract-draft-store"
+import { resolveFieldDisplay, type TemplateField } from "./contract-draft"
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     contractVariable: {
-      insertContractVariable: (key: ContractVariableKey) => ReturnType
+      insertContractVariable: (field: {
+        id: string
+        token: string
+      }) => ReturnType
     }
   }
 }
 
-function ContractVariableView({ node }: NodeViewProps) {
-  const meta = useContractMetaStore()
-  const key = String(node.attrs.key ?? "")
-  const valid = isContractVariableKey(key)
-  const display = valid
-    ? resolveContractVariable(meta, key)
-    : `{${key || "?"}}`
-  const empty = valid && display === `{${key}}`
+function ContractVariableView({
+  node,
+  HTMLAttributes,
+  selected,
+  getPos,
+  editor,
+}: NodeViewProps) {
+  const { fields, values } = useContractDraftStore()
+  const id = String(node.attrs.key ?? "")
+  const tokenAttr = String(node.attrs.token ?? "")
+  const field = fields.find((f) => f.id === id)
+  const token = field?.token || tokenAttr || "?"
+  const display = field
+    ? resolveFieldDisplay(field, values[id] ?? "")
+    : `{${token}}`
+  const empty = display === `{${token}}`
+
+  const selectNode = React.useCallback(
+    (event: React.MouseEvent) => {
+      // Atom = whole chip only (no partial text caret). Click selects the node
+      // so toolbar marks can target it. Don't hijack drag-range selections.
+      if (event.detail === 0) return
+      const pos = getPos()
+      if (typeof pos !== "number" || !editor) return
+      editor.chain().focus().setNodeSelection(pos).run()
+    },
+    [editor, getPos]
+  )
 
   return (
     <NodeViewWrapper
       as="span"
+      {...HTMLAttributes}
       className={cn(
         "contract-variable",
-        empty && "contract-variable--empty"
+        empty && "contract-variable--empty",
+        selected && "contract-variable--selected",
+        HTMLAttributes.className
       )}
-      data-key={key}
+      data-key={id}
+      data-token={token}
       contentEditable={false}
+      draggable={false}
+      onClick={selectNode}
     >
       {/* Inner element required — TipTap BubbleMenu crashes on bare text in atom node views */}
       <span>{display}</span>
@@ -64,15 +90,25 @@ const ContractVariableNode = Node.create({
   inline: true,
   atom: true,
   selectable: true,
-  draggable: true,
+  // Drag steals the click that should NodeSelect the chip
+  draggable: false,
+  // Allow bold / italic / color / font from surrounding toolbar marks
+  marks: "_",
 
   addAttributes() {
     return {
       key: {
-        default: "nilai",
+        default: "",
         parseHTML: (el) =>
-          (el as HTMLElement).getAttribute("data-key") ?? "nilai",
+          (el as HTMLElement).getAttribute("data-key") ?? "",
         renderHTML: (attrs) => ({ "data-key": attrs.key }),
+      },
+      token: {
+        default: "",
+        parseHTML: (el) =>
+          (el as HTMLElement).getAttribute("data-token") ?? "",
+        renderHTML: (attrs) =>
+          attrs.token ? { "data-token": attrs.token } : {},
       },
     }
   },
@@ -98,11 +134,11 @@ const ContractVariableNode = Node.create({
   addCommands() {
     return {
       insertContractVariable:
-        (key: ContractVariableKey) =>
+        (field: { id: string; token: string }) =>
         ({ commands }) =>
           commands.insertContent({
             type: this.name,
-            attrs: { key },
+            attrs: { key: field.id, token: field.token },
           }),
     }
   },
@@ -110,12 +146,17 @@ const ContractVariableNode = Node.create({
   addInputRules() {
     return [
       new InputRule({
-        find: /\{(judul|pihak1|pihak2|tanggal|nilai)\}$/,
+        find: /\{([a-z0-9_]+)\}$/,
         handler: ({ state, range, match }) => {
-          const key = match[1]
-          if (!isContractVariableKey(key)) return
+          const token = match[1]
+          const field = findFieldByToken(token)
+          if (!field) return
           const { tr } = state
-          tr.replaceWith(range.from, range.to, this.type.create({ key }))
+          tr.replaceWith(
+            range.from,
+            range.to,
+            this.type.create({ key: field.id, token: field.token })
+          )
         },
       }),
     ]
@@ -123,8 +164,8 @@ const ContractVariableNode = Node.create({
 })
 
 interface VariableListProps {
-  items: ContractVariableDef[]
-  command: (item: ContractVariableDef) => void
+  items: TemplateField[]
+  command: (item: TemplateField) => void
 }
 
 interface VariableListRef {
@@ -161,7 +202,7 @@ const VariableList = React.forwardRef<VariableListRef, VariableListProps>(
     if (items.length === 0) {
       return (
         <div className="text-muted-foreground p-3 text-center text-sm">
-          Tidak ada variabel
+          Belum ada properti — tambah di panel kanan.
         </div>
       )
     }
@@ -170,7 +211,7 @@ const VariableList = React.forwardRef<VariableListRef, VariableListProps>(
       <div className="bg-popover max-h-[240px] overflow-auto rounded-md border p-1 shadow-md">
         {items.map((item, index) => (
           <button
-            key={item.key}
+            key={item.id}
             type="button"
             onClick={() => command(item)}
             className={cn(
@@ -202,14 +243,24 @@ function createVariableSuggestion(): Omit<SuggestionOptions, "editor"> {
     char: "@",
     pluginKey: new PluginKey("contractVariableSuggestion"),
     allowSpaces: false,
-    items: ({ query }) => findVariableByQuery(query),
+    items: ({ query }) => {
+      const q = query.toLowerCase()
+      const { fields } = getDraftStoreSnapshot()
+      const list = !q
+        ? fields
+        : fields.filter(
+            (f) =>
+              f.token.includes(q) || f.label.toLowerCase().includes(q)
+          )
+      return list
+    },
     command: ({ editor, range, props }) => {
-      const item = props as ContractVariableDef
+      const field = props as TemplateField
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContractVariable(item.key)
+        .insertContractVariable({ id: field.id, token: field.token })
         .run()
     },
     render: () => {
@@ -288,26 +339,33 @@ const ContractVariableMention = Extension.create({
 const VARIABLE_STYLES = `
   .contract-variable {
     display: inline;
-    padding: 0 0.15em;
-    border-radius: 0.2em;
-    background: color-mix(in oklab, hsl(var(--foreground)) 6%, transparent);
+    padding: 0 0.12em;
+    border-radius: 0.15em;
+    background: color-mix(in oklab, hsl(var(--foreground)) 5%, transparent);
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
-    border-bottom: 1.5px solid color-mix(in oklab, hsl(var(--foreground)) 28%, transparent);
-    font-weight: 600;
+    border-bottom: 1.5px solid color-mix(in oklab, hsl(var(--foreground)) 22%, transparent);
+    /* Inherit document / mark styles (bold, italic, color, font) */
+    font-weight: inherit;
+    font-style: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    line-height: inherit;
     white-space: nowrap;
-    cursor: default;
+    cursor: pointer;
+    user-select: none;
   }
   .contract-variable--empty {
     color: hsl(var(--muted-foreground));
-    font-weight: 500;
-    font-style: italic;
     border-bottom-style: dashed;
   }
+  .contract-variable--selected,
   .ProseMirror-selectednode.contract-variable,
   .ProseMirror-selectednode .contract-variable {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 1px;
+    background: color-mix(in oklab, hsl(var(--ring)) 14%, transparent);
   }
   .tippy-box[data-theme~='contract-variable-menu'] {
     background-color: transparent;
@@ -321,7 +379,6 @@ const VARIABLE_STYLES = `
     .contract-variable {
       background: transparent;
       border-bottom: none;
-      font-weight: inherit;
       padding: 0;
     }
   }
@@ -331,22 +388,16 @@ const STYLE_ID = "editor-contract-variable-styles"
 
 function injectVariableStyles() {
   if (typeof document === "undefined") return
-  if (document.getElementById(STYLE_ID)) return
-  const style = document.createElement("style")
-  style.id = STYLE_ID
+  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null
+  if (!style) {
+    style = document.createElement("style")
+    style.id = STYLE_ID
+    document.head.appendChild(style)
+  }
   style.textContent = VARIABLE_STYLES
-  document.head.appendChild(style)
 }
 
 export const EditorContractVariableExtension = createEditorExtension({
   extension: [ContractVariableNode, ContractVariableMention],
-  commands: CONTRACT_VARIABLES.map((v) => ({
-    key: `variable-${v.key}`,
-    icon: Braces,
-    label: v.label,
-    description: `Sisipkan {${v.token}}`,
-    execute: (editor) =>
-      editor.chain().focus().insertContractVariable(v.key).run(),
-    canExecute: () => true,
-  })),
+  commands: [],
 })

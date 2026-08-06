@@ -11,8 +11,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Shadcn + Tiptap Editor",
-  description: "Shadcn + Tiptap Editor",
+  title: "Agreed",
+  description: "Agreed — editor dokumen perjanjian dengan properti live dan kanvas A4",
 }
 
 export interface LayoutProps {

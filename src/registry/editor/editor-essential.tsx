@@ -36,16 +36,16 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "undo",
     icon: Undo,
-    label: "Undo",
-    description: "Undo the last action",
+    label: "Urungkan",
+    description: "Batalkan aksi terakhir",
     execute: (editor) => editor.chain().focus().undo().run(),
     canExecute: (editor) => editor.can().chain().focus().undo().run(),
   },
   {
     key: "redo",
     icon: Redo,
-    label: "Redo",
-    description: "Redo the last action",
+    label: "Ulangi",
+    description: "Ulangi aksi terakhir",
     execute: (editor) => editor.chain().focus().redo().run(),
     canExecute: (editor) => editor.can().chain().focus().redo().run(),
   },
@@ -53,8 +53,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "bold",
     icon: Bold,
-    label: "Bold",
-    description: "Make text bold",
+    label: "Tebal",
+    description: "Teks tebal",
     execute: (editor) => editor.chain().focus().toggleBold().run(),
     canExecute: (editor) => editor.can().chain().focus().toggleBold().run(),
     isActive: (editor) => editor.isActive("bold"),
@@ -62,8 +62,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "italic",
     icon: Italic,
-    label: "Italic",
-    description: "Italicize text",
+    label: "Miring",
+    description: "Teks miring",
     execute: (editor) => editor.chain().focus().toggleItalic().run(),
     canExecute: (editor) => editor.can().chain().focus().toggleItalic().run(),
     isActive: (editor) => editor.isActive("italic"),
@@ -71,8 +71,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "underline",
     icon: Underline,
-    label: "Underline",
-    description: "Underline text",
+    label: "Garis bawah",
+    description: "Garis bawah teks",
     execute: (editor) => editor.chain().focus().toggleUnderline().run(),
     canExecute: (editor) =>
       editor.can().chain().focus().toggleUnderline().run(),
@@ -81,8 +81,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "strike",
     icon: Strikethrough,
-    label: "Strikethrough",
-    description: "Strike through text",
+    label: "Coret",
+    description: "Coret teks",
     execute: (editor) => editor.chain().focus().toggleStrike().run(),
     canExecute: (editor) => editor.can().chain().focus().toggleStrike().run(),
     isActive: (editor) => editor.isActive("strike"),
@@ -90,8 +90,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "code",
     icon: Code,
-    label: "Code",
-    description: "Format text as code",
+    label: "Kode",
+    description: "Format sebagai kode",
     execute: (editor) => editor.chain().focus().toggleCode().run(),
     canExecute: (editor) => editor.can().chain().focus().toggleCode().run(),
     isActive: (editor) => editor.isActive("code"),
@@ -149,8 +149,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "heading5",
     icon: Heading5,
-    label: "Heading 5",
-    description: "For minor details",
+    label: "Judul 5",
+    description: "Detail kecil",
     execute: (editor) => editor.chain().focus().setHeading({ level: 5 }).run(),
     canExecute: (editor) =>
       editor.can().chain().focus().setHeading({ level: 5 }).run(),
@@ -159,8 +159,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "heading6",
     icon: Heading6,
-    label: "Heading 6",
-    description: "Use for the smallest details",
+    label: "Judul 6",
+    description: "Detail terkecil",
     execute: (editor) => editor.chain().focus().setHeading({ level: 6 }).run(),
     canExecute: (editor) =>
       editor.can().chain().focus().setHeading({ level: 6 }).run(),
@@ -169,8 +169,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "blockquote",
     icon: TextQuote,
-    label: "Quote",
-    description: "Capture a quote",
+    label: "Kutipan",
+    description: "Blok kutipan",
     execute: (editor) => editor.chain().focus().toggleBlockquote().run(),
     canExecute: (editor) =>
       editor.can().chain().focus().toggleBlockquote().run(),
@@ -179,8 +179,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "divider",
     icon: Minus,
-    label: "Divider",
-    description: "Visually divide blocks",
+    label: "Pemisah",
+    description: "Garis pemisah antar blok",
     execute: (editor) => editor.chain().focus().setHorizontalRule().run(),
     canExecute: (editor) =>
       editor.can().chain().focus().setHorizontalRule().run(),
@@ -189,8 +189,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "bulletList",
     icon: List,
-    label: "Bullet List",
-    description: "Create a bullet list",
+    label: "Poin",
+    description: "Daftar berpoin",
     execute: (editor) => editor.chain().focus().toggleBulletList().run(),
     canExecute: (editor) =>
       editor.can().chain().focus().toggleBulletList().run(),
@@ -199,8 +199,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "orderedList",
     icon: ListOrdered,
-    label: "Ordered List",
-    description: "Create an ordered list",
+    label: "Bernomor",
+    description: "Daftar bernomor",
     execute: (editor) => editor.chain().focus().toggleOrderedList().run(),
     canExecute: (editor) =>
       editor.can().chain().focus().toggleOrderedList().run(),
@@ -210,8 +210,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "left",
     icon: AlignLeft,
-    label: "Left",
-    description: "Align text to the left",
+    label: "Kiri",
+    description: "Rata kiri",
     execute: (editor) => editor.chain().focus().setTextAlign("left").run(),
     canExecute: (editor) =>
       editor.can().chain().focus().setTextAlign("left").run(),
@@ -220,8 +220,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "center",
     icon: AlignCenter,
-    label: "Center",
-    description: "Align text to the center",
+    label: "Tengah",
+    description: "Rata tengah",
     execute: (editor) => editor.chain().focus().setTextAlign("center").run(),
     canExecute: (editor) =>
       editor.can().chain().focus().setTextAlign("center").run(),
@@ -230,8 +230,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "right",
     icon: AlignRight,
-    label: "Right",
-    description: "Align text to the right",
+    label: "Kanan",
+    description: "Rata kanan",
     execute: (editor) => editor.chain().focus().setTextAlign("right").run(),
     canExecute: (editor) =>
       editor.can().chain().focus().setTextAlign("right").run(),
@@ -240,8 +240,8 @@ const essentialCommands: EditorActionConfig<Editor>[] = [
   {
     key: "justify",
     icon: AlignJustify,
-    label: "Justify",
-    description: "Align text to justify",
+    label: "Rata kiri-kanan",
+    description: "Rata kiri dan kanan",
     execute: (editor) => editor.chain().focus().setTextAlign("justify").run(),
     canExecute: (editor) =>
       editor.can().chain().focus().setTextAlign("justify").run(),

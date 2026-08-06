@@ -1,11 +1,57 @@
-/** Initial TipTap HTML — multi-page Indonesian contract draft (dummy).
- *  Merge fields: span[data-type=contract-variable][data-key=…] → live form values.
- */
-import { variableHtml } from "./contract-variables"
+import {
+  variableHtml,
+  type ContractDraft,
+  type TemplateField,
+} from "./contract-draft"
 
-const v = variableHtml
+/** Fixed ids — must match data-key in contentHtml below. */
+export const STARTER_FIELD_IDS = {
+  judul: "11111111-1111-4111-8111-111111111101",
+  pihak1: "11111111-1111-4111-8111-111111111102",
+  pihak2: "11111111-1111-4111-8111-111111111103",
+  tanggal: "11111111-1111-4111-8111-111111111104",
+  nilai: "11111111-1111-4111-8111-111111111105",
+} as const
 
-export const DUMMY_CONTRACT_CONTENT = `
+const fields: TemplateField[] = [
+  {
+    id: STARTER_FIELD_IDS.judul,
+    label: "Judul",
+    token: "judul",
+    type: "text",
+  },
+  {
+    id: STARTER_FIELD_IDS.pihak1,
+    label: "Pihak 1",
+    token: "pihak1",
+    type: "text",
+  },
+  {
+    id: STARTER_FIELD_IDS.pihak2,
+    label: "Pihak 2",
+    token: "pihak2",
+    type: "text",
+  },
+  {
+    id: STARTER_FIELD_IDS.tanggal,
+    label: "Tanggal",
+    token: "tanggal",
+    type: "date",
+  },
+  {
+    id: STARTER_FIELD_IDS.nilai,
+    label: "Nilai",
+    token: "nilai",
+    type: "currency",
+  },
+]
+
+const v = (id: keyof typeof STARTER_FIELD_IDS) => {
+  const f = fields.find((x) => x.id === STARTER_FIELD_IDS[id])!
+  return variableHtml(f.id, f.token)
+}
+
+const contentHtml = `
 <h2 style="text-align: center">${v("judul")}</h2>
 <p style="text-align: justify">
 Pada hari ini, ${v("tanggal")}, para pihak yang bertanda tangan di bawah ini:
@@ -92,3 +138,18 @@ para pihak dalam lampiran.
 Demikian perjanjian ini dibuat untuk dipatuhi oleh kedua belah pihak dalam keadaan sehat dan tanpa paksaan.
 </p>
 `.trim()
+
+export function createStarterPerjanjianDraft(): ContractDraft {
+  return {
+    fields,
+    values: {
+      [STARTER_FIELD_IDS.judul]: "Perjanjian Kerja Sama",
+      [STARTER_FIELD_IDS.pihak1]: "PT Contoh Satu",
+      [STARTER_FIELD_IDS.pihak2]: "PT Contoh Dua",
+      [STARTER_FIELD_IDS.tanggal]: "2026-08-04",
+      [STARTER_FIELD_IDS.nilai]: "100000000",
+    },
+    contentHtml,
+    comments: [],
+  }
+}
