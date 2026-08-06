@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "next lint",
     "registry:build": "shadcn build --output public/schema",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.6",
@@ -67,6 +69,7 @@
     "shadcn": "^3.6.2",
     "tailwindcss": "^4.1.18",
     "tsx": "^4.19.2",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }
