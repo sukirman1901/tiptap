@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import {
   createDocument,
+  deleteDocument,
   listDocuments,
   loadDocument,
+  renameDocument,
   saveDocument,
 } from "./document-store"
 import { emptyDraft } from "@/features/playground/components/contract-draft"
@@ -50,5 +52,19 @@ describe("document-store", () => {
     const doc = createDocument({ title: "X", draft: emptyDraft() })
     saveDocument({ ...doc, status: "dalam_review" })
     expect(loadDocument(doc.id)?.status).toBe("dalam_review")
+  })
+
+  it("renames a document", () => {
+    const doc = createDocument({ title: "Lama", draft: emptyDraft() })
+    const next = renameDocument(doc.id, "Baru")
+    expect(next?.title).toBe("Baru")
+    expect(loadDocument(doc.id)?.title).toBe("Baru")
+  })
+
+  it("deletes a document", () => {
+    const doc = createDocument({ title: "Hapus saya", draft: emptyDraft() })
+    expect(deleteDocument(doc.id)).toBe(true)
+    expect(listDocuments()).toHaveLength(0)
+    expect(loadDocument(doc.id)).toBeNull()
   })
 })

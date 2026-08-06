@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Sheet,
@@ -34,11 +35,56 @@ const links = [
   { href: "/template", label: "Template" },
 ] as const
 
+function MobileNav({ pathname }: { pathname: string }) {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="sm:hidden"
+          aria-label="Menu navigasi"
+        >
+          <Menu className="size-4" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-64">
+        <SheetHeader>
+          <SheetTitle>Navigasi</SheetTitle>
+        </SheetHeader>
+        <nav className="mt-4 flex flex-col gap-1" aria-label="Utama">
+          {links.map((l) => (
+            <SheetClose asChild key={l.href}>
+              <Link
+                href={l.href}
+                className={cn(
+                  "rounded-md px-3 py-2 text-sm transition-colors",
+                  pathname.startsWith(l.href)
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {l.label}
+              </Link>
+            </SheetClose>
+          ))}
+        </nav>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
 export interface FrontHeaderProps {}
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const FrontHeader = (props: FrontHeaderProps) => {
   const pathname = usePathname()
+  /** Radix Sheet IDs differ SSR vs client — mount after hydrate. */
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   return (
     <header className="bg-background sticky top-0 z-50 w-full border-b border-border/40">
@@ -77,40 +123,20 @@ const FrontHeader = (props: FrontHeaderProps) => {
         </div>
 
         <div className="flex items-center gap-1">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="sm:hidden"
-                aria-label="Menu navigasi"
-              >
-                <Menu className="size-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-64">
-              <SheetHeader>
-                <SheetTitle>Navigasi</SheetTitle>
-              </SheetHeader>
-              <nav className="mt-4 flex flex-col gap-1" aria-label="Utama">
-                {links.map((l) => (
-                  <SheetClose asChild key={l.href}>
-                    <Link
-                      href={l.href}
-                      className={cn(
-                        "rounded-md px-3 py-2 text-sm transition-colors",
-                        pathname.startsWith(l.href)
-                          ? "bg-accent text-accent-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {l.label}
-                    </Link>
-                  </SheetClose>
-                ))}
-              </nav>
-            </SheetContent>
-          </Sheet>
+          {mounted ? (
+            <MobileNav pathname={pathname} />
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="sm:hidden"
+              aria-label="Menu navigasi"
+              type="button"
+              disabled
+            >
+              <Menu className="size-4" />
+            </Button>
+          )}
 
           <SwitchThemeButton />
         </div>

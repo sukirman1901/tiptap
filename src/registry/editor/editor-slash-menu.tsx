@@ -50,91 +50,91 @@ interface SlashMenuListRef {
 
 export const defaultSlashMenuItems: SlashMenuItem[] = [
   {
-    title: "Text",
-    description: "Start writing with plain text",
+    title: "Teks",
+    description: "Paragraf biasa",
     icon: Type,
-    searchTerms: ["text", "paragraph", "plain"],
+    searchTerms: ["text", "teks", "paragraph", "paragraf", "plain"],
     command: (editor) => {
       if (editor) editor.chain().focus().setParagraph().run()
     },
   },
   {
-    title: "Heading 1",
-    description: "Large heading",
+    title: "Judul 1",
+    description: "Judul besar",
     icon: Heading1,
-    searchTerms: ["heading", "h1", "title", "large"],
+    searchTerms: ["heading", "judul", "h1", "title", "large"],
     command: (editor) => {
       if (editor) editor.chain().focus().setHeading({ level: 1 }).run()
     },
   },
   {
-    title: "Heading 2",
-    description: "Medium heading",
+    title: "Judul 2",
+    description: "Judul sedang",
     icon: Heading2,
-    searchTerms: ["heading", "h2", "subtitle", "medium"],
+    searchTerms: ["heading", "judul", "h2", "subtitle", "medium"],
     command: (editor) => {
       if (editor) editor.chain().focus().setHeading({ level: 2 }).run()
     },
   },
   {
-    title: "Heading 3",
-    description: "Small heading",
+    title: "Judul 3",
+    description: "Judul kecil",
     icon: Heading3,
-    searchTerms: ["heading", "h3", "small"],
+    searchTerms: ["heading", "judul", "h3", "small"],
     command: (editor) => {
       if (editor) editor.chain().focus().setHeading({ level: 3 }).run()
     },
   },
   {
-    title: "Bullet List",
-    description: "Create a bullet list",
+    title: "Daftar poin",
+    description: "Buat daftar berpoin",
     icon: List,
-    searchTerms: ["bullet", "list", "unordered", "ul"],
+    searchTerms: ["bullet", "list", "daftar", "poin", "unordered", "ul"],
     command: (editor) => {
       if (editor) editor.chain().focus().toggleBulletList().run()
     },
   },
   {
-    title: "Numbered List",
-    description: "Create a numbered list",
+    title: "Daftar bernomor",
+    description: "Buat daftar bernomor",
     icon: ListOrdered,
-    searchTerms: ["numbered", "list", "ordered", "ol"],
+    searchTerms: ["numbered", "list", "daftar", "nomor", "ordered", "ol"],
     command: (editor) => {
       if (editor) editor.chain().focus().toggleOrderedList().run()
     },
   },
   {
-    title: "Task List",
-    description: "Create a task list with checkboxes",
+    title: "Checklist",
+    description: "Daftar dengan kotak centang",
     icon: CheckSquare,
-    searchTerms: ["task", "todo", "checkbox", "checklist"],
+    searchTerms: ["task", "todo", "checkbox", "checklist", "centang"],
     command: (editor) => {
       if (editor) editor.chain().focus().toggleTaskList().run()
     },
   },
   {
-    title: "Quote",
-    description: "Capture a quote",
+    title: "Kutipan",
+    description: "Blok kutipan",
     icon: TextQuote,
-    searchTerms: ["quote", "blockquote", "cite"],
+    searchTerms: ["quote", "kutipan", "blockquote", "cite"],
     command: (editor) => {
       if (editor) editor.chain().focus().setBlockquote().run()
     },
   },
   {
-    title: "Divider",
-    description: "Visually divide blocks",
+    title: "Pemisah",
+    description: "Garis pemisah antar blok",
     icon: Minus,
-    searchTerms: ["divider", "hr", "horizontal", "rule", "line"],
+    searchTerms: ["divider", "hr", "pemisah", "horizontal", "rule", "line"],
     command: (editor) => {
       if (editor) editor.chain().focus().setHorizontalRule().run()
     },
   },
   {
-    title: "Image",
-    description: "Upload or embed an image",
+    title: "Gambar",
+    description: "Unggah atau sisipkan gambar",
     icon: ImageUp,
-    searchTerms: ["image", "img", "picture", "photo", "upload"],
+    searchTerms: ["image", "gambar", "img", "picture", "photo", "upload"],
     command: (editor) => {
       if (editor) {
         editor.chain().focus().setImage({ src: null }).run()
@@ -142,10 +142,10 @@ export const defaultSlashMenuItems: SlashMenuItem[] = [
     },
   },
   {
-    title: "Table",
-    description: "Insert a table",
+    title: "Tabel",
+    description: "Sisipkan tabel",
     icon: Table,
-    searchTerms: ["table", "grid", "spreadsheet"],
+    searchTerms: ["table", "tabel", "grid", "spreadsheet"],
     command: (editor) => {
       if (editor) {
         editor
@@ -182,14 +182,11 @@ const EditorSlashMenuList = React.forwardRef<
   }, [selectedIndex])
 
   const handleMouseEnter = (index: number) => {
-    // Ignore mouse enter events during keyboard navigation
-    // to prevent scrolling from triggering selection changes
     if (isKeyboardNavigating.current) return
     setSelectedIndex(index)
   }
 
   const handleMouseMove = () => {
-    // Re-enable mouse selection after user moves the mouse
     isKeyboardNavigating.current = false
   }
 
@@ -222,7 +219,7 @@ const EditorSlashMenuList = React.forwardRef<
   if (items.length === 0) {
     return (
       <div className="text-muted-foreground p-4 text-center text-sm">
-        No results found
+        Tidak ada hasil
       </div>
     )
   }
@@ -233,7 +230,7 @@ const EditorSlashMenuList = React.forwardRef<
         height:
           items.length * Number(itemRefs.current[0]?.offsetHeight ?? 48) + 8,
       }}
-      className="bg-popover max-h-[300px] overflow-auto rounded-md border p-1 shadow-md"
+      className="bg-popover text-popover-foreground max-h-[300px] overflow-auto rounded-md border p-1 shadow-md"
       onMouseMove={handleMouseMove}
     >
       {items.map((item, index) => (
@@ -245,7 +242,7 @@ const EditorSlashMenuList = React.forwardRef<
           onClick={() => command(item)}
           onMouseEnter={() => handleMouseEnter(index)}
           className={cn(
-            "relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors outline-none select-none",
+            "text-popover-foreground relative flex w-full cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm transition-colors outline-none select-none",
             "min-w-[256px]",
             index === selectedIndex
               ? "bg-accent text-accent-foreground"
@@ -253,10 +250,14 @@ const EditorSlashMenuList = React.forwardRef<
           )}
         >
           <div
-            className="border-border bg-background/40 flex size-8 items-center justify-center rounded-lg border"
+            className="border-border bg-background text-foreground flex size-8 shrink-0 items-center justify-center rounded-lg border"
             aria-hidden="true"
           >
-            <item.icon size={16} strokeWidth={2} className="opacity-60" />
+            <item.icon
+              size={16}
+              strokeWidth={2}
+              className="text-foreground opacity-70"
+            />
           </div>
           <div className="flex flex-col items-start">
             <span className="text-sm font-medium">{item.title}</span>
@@ -345,9 +346,7 @@ function createSlashMenuSuggestion(
       }
     },
     command: ({ editor, range, props }) => {
-      // Delete the "/" trigger and any query text
       editor.chain().focus().deleteRange(range).run()
-      // Execute the selected command
       props.command(editor)
     },
   }
@@ -391,15 +390,17 @@ export const EditorSlashMenuExtension =
 
 const SLASH_MENU_STYLES = `
   .tippy-box[data-theme~='slash-menu'] {
-    background-color: hsl(var(--popover));
-    border: 1px solid hsl(var(--border));
-    border-radius: 0.5rem;
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    overflow: hidden;
-    min-width: 280px;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: inherit !important;
   }
-  .tippy-box[data-theme~='slash-menu'] .tippy-content {
-    padding: 0;
+  .tippy-box[data-theme~='slash-menu'] > .tippy-content {
+    padding: 0 !important;
+    color: inherit !important;
+  }
+  .tippy-box[data-theme~='slash-menu'] > .tippy-arrow {
+    display: none !important;
   }
 `
 

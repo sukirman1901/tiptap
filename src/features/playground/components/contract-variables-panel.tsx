@@ -79,7 +79,7 @@ export function ContractVariablesPanel({
     const inDoc = draft.contentHtml.includes(`data-key="${field.id}"`)
     if (inDoc) {
       const ok = window.confirm(
-        `Variabel “${field.label}” masih dipakai di dokumen. Hapus dari skema? Placeholder di dokumen akan tetap ada sebagai yatim.`
+        `Properti “${field.label}” masih dipakai di dokumen. Hapus dari skema? Placeholder di dokumen akan tetap ada sebagai yatim.`
       )
       if (!ok) return
     }
@@ -94,7 +94,7 @@ export function ContractVariablesPanel({
   }
 
   function handleAdd() {
-    const field = createField({ label: "Variabel baru", type: "text" })
+    const field = createField({ label: "Properti baru", type: "text" })
     onChange({
       ...draft,
       fields: [...draft.fields, field],
@@ -111,7 +111,7 @@ export function ContractVariablesPanel({
     <div className="flex flex-col gap-5 px-4 py-5 sm:px-5">
       <div className="space-y-1.5">
         <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">
-          Variabel
+          Properti
         </h2>
         <p className="text-muted-foreground text-xs leading-relaxed">
           Isi nilai di sini. Ketik <span className="font-mono">@</span> di dokumen
@@ -123,7 +123,7 @@ export function ContractVariablesPanel({
               className="rounded-md border border-amber-600/25 bg-amber-50/60 px-2.5 py-1.5 text-[12px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
               role="status"
             >
-              {emptyCount} variabel belum diisi — di draf masih tampil sebagai{" "}
+              {emptyCount} properti belum diisi — di draf masih tampil sebagai{" "}
               <span className="font-mono">{"{token}"}</span>.
             </p>
           ) : (
@@ -131,7 +131,7 @@ export function ContractVariablesPanel({
               className="text-muted-foreground rounded-md border border-border/50 bg-muted/30 px-2.5 py-1.5 text-[12px]"
               role="status"
             >
-              Semua variabel terisi.
+              Semua properti terisi.
             </p>
           ))}
       </div>
@@ -139,7 +139,7 @@ export function ContractVariablesPanel({
       {draft.fields.length === 0 ? (
         <div className="flex flex-col gap-3">
           <p className="text-muted-foreground text-xs leading-relaxed">
-            Belum ada variabel. Tambah skema lalu sisipkan dengan{" "}
+            Belum ada properti. Tambah skema lalu sisipkan dengan{" "}
             <span className="font-mono">@</span> di canvas.
           </p>
           <AddVariableButton onClick={handleAdd} />
@@ -318,7 +318,7 @@ function AddVariableButton({ onClick }: { onClick: () => void }) {
         "px-3 py-2.5 text-xs transition-colors hover:border-border"
       )}
     >
-      + Tambah variabel
+      + Tambah properti
     </button>
   )
 }

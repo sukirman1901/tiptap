@@ -192,16 +192,14 @@ interface FullFeaturedEditorProps {
   documentTitle: string
   documentStatus: DocumentStatus
   documentRole: DocumentRole
-  onDocumentRoleChange: (role: DocumentRole) => void
   onDocumentStatusChange: (status: DocumentStatus) => void
   onDocumentSave: () => void
-  onSaveAsTemplate?: () => void
   documentFeedback?: string | null
   activeCommentId?: string | null
   onActiveCommentIdChange?: (id: string | null) => void
   focusComment?: ContractComment | null
   onFocusCommentHandled?: () => void
-  /** Mobile: open Variabel/Komentar sheet */
+  /** Mobile: open Properti/Komentar sheet */
   onOpenMobilePanel?: () => void
   openCommentCount?: number
 }
@@ -214,10 +212,8 @@ export function FullFeaturedEditor({
   documentTitle,
   documentStatus,
   documentRole,
-  onDocumentRoleChange,
   onDocumentStatusChange,
   onDocumentSave,
-  onSaveAsTemplate,
   documentFeedback = null,
   activeCommentId = null,
   onActiveCommentIdChange,
@@ -267,11 +263,12 @@ export function FullFeaturedEditor({
                   ...staticSlashMenuItems,
                   ...getDraftStoreSnapshot().fields.map((f) => ({
                     title: `{${f.token}}`,
-                    description: `Variabel: ${f.label}`,
+                    description: `Properti: ${f.label}`,
                     icon: Braces,
                     searchTerms: [
                       "var",
                       "variabel",
+                      "properti",
                       f.token,
                       f.label.toLowerCase(),
                     ],
@@ -313,10 +310,8 @@ export function FullFeaturedEditor({
             title={documentTitle}
             status={documentStatus}
             role={documentRole}
-            onRoleChange={onDocumentRoleChange}
             onStatusChange={onDocumentStatusChange}
             onSave={onDocumentSave}
-            onSaveAsTemplate={onSaveAsTemplate}
             mode={mode}
             feedback={documentFeedback}
           />

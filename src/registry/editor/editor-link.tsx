@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "@tiptap/extension-link"
 import { BubbleMenu, type Editor } from "@tiptap/react"
-import { EditorContext, createEditorExtension } from "./editor"
+import { EDITOR_BUBBLE_TIPPY_OPTIONS, EditorContext, createEditorExtension } from "./editor"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Check, ExternalLink, Link2, Link2Off } from "lucide-react"
@@ -80,7 +80,7 @@ export const EditorBubbleMenuLink = React.forwardRef<
       {...props}
       editor={editor}
       tippyOptions={{
-        duration: 100,
+        ...EDITOR_BUBBLE_TIPPY_OPTIONS,
         placement: "bottom",
       }}
       shouldShow={({ editor: e, from, to }) => {
@@ -91,7 +91,7 @@ export const EditorBubbleMenuLink = React.forwardRef<
     >
       <div
         ref={ref}
-        className="bg-popover flex items-center gap-0.5 rounded-md border p-0.5 shadow-md"
+        className="bg-popover text-popover-foreground flex items-center gap-0.5 rounded-md border p-0.5 shadow-md"
       >
         {isEditing ? (
           <div className="flex items-center gap-1 px-1">
@@ -166,8 +166,8 @@ export const EditorLinkExtensions = createEditorExtension({
     {
       key: "setLink",
       icon: Link2,
-      label: "Add Link",
-      description: "Insert a hyperlink",
+      label: "Tautan",
+      description: "Sisipkan tautan",
       execute: (editor: Editor, options) =>
         editor
           .chain()
@@ -180,7 +180,7 @@ export const EditorLinkExtensions = createEditorExtension({
     {
       key: "unsetLink",
       icon: Link2Off,
-      label: "Remove Link",
+      label: "Hapus tautan",
       description: "Remove the hyperlink",
       execute: (editor: Editor) => editor.chain().focus().unsetLink().run(),
       canExecute: (editor: Editor) => editor.isActive("link"),

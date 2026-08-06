@@ -794,6 +794,15 @@ export interface EditorBubbleMenuProps extends Omit<
   "editor"
 > {}
 
+/** Shared tippy options — theme must match globals.css `.editor-bubble` rules. */
+export const EDITOR_BUBBLE_TIPPY_OPTIONS = {
+  duration: 100,
+  theme: "editor-bubble",
+  arrow: false,
+  maxWidth: "none" as const,
+  zIndex: 40,
+}
+
 const EditorBubbleMenu = React.forwardRef<
   HTMLDivElement,
   EditorBubbleMenuProps
@@ -807,9 +816,10 @@ const EditorBubbleMenu = React.forwardRef<
       {...props}
       editor={editor}
       tippyOptions={{
-        duration: 100,
+        ...EDITOR_BUBBLE_TIPPY_OPTIONS,
         placement: "top",
         ...tippyOptions,
+        theme: tippyOptions?.theme ?? EDITOR_BUBBLE_TIPPY_OPTIONS.theme,
       }}
       shouldShow={shouldShow}
       className={cn("w-fit", className)}
@@ -834,7 +844,7 @@ const EditorBubbleMenuContent = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "bg-popover flex items-center gap-0.5 rounded-md border p-0.5 shadow-md",
+        "bg-popover text-popover-foreground flex items-center gap-0.5 rounded-md border p-0.5 shadow-md",
         className
       )}
       {...props}
@@ -946,7 +956,7 @@ const EditorBubbleMenuButton = React.forwardRef<
         disabled={!canUse}
         onClick={handleClick}
         aria-label={config?.label}
-        className={cn("h-7 w-7 p-0", className)}
+        className={cn("text-foreground h-7 w-7 p-0", className)}
         {...props}
       >
         {children}

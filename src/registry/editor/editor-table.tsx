@@ -37,7 +37,7 @@ import {
   Trash2,
 } from "lucide-react"
 import * as React from "react"
-import { EditorContext, createEditorExtension } from "./editor"
+import { EditorContext, createEditorExtension, EDITOR_BUBBLE_TIPPY_OPTIONS } from "./editor"
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -77,18 +77,45 @@ class BorderAwareTableView extends TableView {
   }
 }
 
-/** Editor-only styles: hide grid when data-borders=false (cells keep layout). */
-const TABLE_BORDER_STYLES = `
+/** Shared: hide grid when data-borders=false (editor + preview). */
+export const TABLE_BORDER_STYLES = `
+  table[data-borders="false"] td,
+  table[data-borders="false"] th {
+    border-color: transparent !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    font-weight: inherit !important;
+  }
+  table[data-borders="false"] thead,
+  table[data-borders="false"] tbody tr {
+    border-color: transparent !important;
+  }
+  /* Contract tables: header row reads as body text, not UI chrome */
+  .ProseMirror th,
+  .contract-doc-preview th {
+    color: inherit;
+    font-weight: inherit;
+    background-color: transparent;
+  }
+`
+
+/** Editor-only: scope under ProseMirror (legacy selector kept for clarity). */
+const EDITOR_TABLE_BORDER_STYLES = `
   .ProseMirror table[data-borders="false"] td,
   .ProseMirror table[data-borders="false"] th {
     border-color: transparent !important;
     background-color: transparent !important;
-    color: inherit;
-    font-weight: inherit;
+    color: inherit !important;
+    font-weight: inherit !important;
   }
   .ProseMirror table[data-borders="false"] thead,
   .ProseMirror table[data-borders="false"] tbody tr {
     border-color: transparent !important;
+  }
+  .ProseMirror th {
+    color: inherit;
+    font-weight: inherit;
+    background-color: transparent;
   }
 `
 
@@ -147,7 +174,9 @@ export const EditorTableExtension = Table.extend({
 })
 
 function TableBorderStyle() {
-  return <style dangerouslySetInnerHTML={{ __html: TABLE_BORDER_STYLES }} />
+  return (
+    <style dangerouslySetInnerHTML={{ __html: EDITOR_TABLE_BORDER_STYLES }} />
+  )
 }
 
 export const EditorTableRowExtension = TableRow.configure({
@@ -191,8 +220,9 @@ export const EditorTableHeaderExtension = TableHeader.extend({
 }).configure({
   HTMLAttributes: {
     class: cn(
-      "h-10 px-2 text-left align-middle font-medium text-muted-foreground",
-      "border border-border bg-muted/10",
+      // Document-tight cells: no min-height / fat padding (Word-like identity tables)
+      "px-1 py-0 text-left align-top",
+      "border border-border",
       "relative box-border min-w-[1em]",
       "[&>p]:m-0",
       // Selected cell overlay using Tailwind after: pseudo-element
@@ -236,7 +266,8 @@ export const EditorTableCellExtension = TableCell.extend({
 }).configure({
   HTMLAttributes: {
     class: cn(
-      "p-2 align-middle border border-border",
+      // Document-tight cells: spacing controls own paragraph margins; padding stays minimal
+      "px-1 py-0 align-top border border-border",
       "relative box-border min-w-[1em]",
       "[&>p]:m-0",
       // Selected cell overlay using Tailwind after: pseudo-element
@@ -258,8 +289,8 @@ export const EditorTableExtensions = createEditorExtension({
     {
       key: "insertTable",
       icon: TableIcon,
-      label: "Insert Table",
-      description: "Insert a new table",
+      label: "Sisipkan tabel",
+      description: "Sisipkan tabel baru",
       execute: (editor: Editor) =>
         editor
           .chain()
@@ -271,7 +302,7 @@ export const EditorTableExtensions = createEditorExtension({
     },
     {
       key: "addColumnBefore",
-      label: "Add Column Before",
+      label: "Kolom sebelum",
       execute: (editor: Editor) =>
         editor.chain().focus().addColumnBefore().run(),
       canExecute: (editor: Editor) =>
@@ -279,7 +310,7 @@ export const EditorTableExtensions = createEditorExtension({
     },
     {
       key: "addColumnAfter",
-      label: "Add Column After",
+      label: "Kolom sesudah",
       execute: (editor: Editor) =>
         editor.chain().focus().addColumnAfter().run(),
       canExecute: (editor: Editor) =>
@@ -287,56 +318,56 @@ export const EditorTableExtensions = createEditorExtension({
     },
     {
       key: "deleteColumn",
-      label: "Delete Column",
+      label: "Hapus kolom",
       execute: (editor: Editor) => editor.chain().focus().deleteColumn().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().deleteColumn().run(),
     },
     {
       key: "addRowBefore",
-      label: "Add Row Before",
+      label: "Baris sebelum",
       execute: (editor: Editor) => editor.chain().focus().addRowBefore().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().addRowBefore().run(),
     },
     {
       key: "addRowAfter",
-      label: "Add Row After",
+      label: "Baris sesudah",
       execute: (editor: Editor) => editor.chain().focus().addRowAfter().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().addRowAfter().run(),
     },
     {
       key: "deleteRow",
-      label: "Delete Row",
+      label: "Hapus baris",
       execute: (editor: Editor) => editor.chain().focus().deleteRow().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().deleteRow().run(),
     },
     {
       key: "deleteTable",
-      label: "Delete Table",
+      label: "Hapus tabel",
       execute: (editor: Editor) => editor.chain().focus().deleteTable().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().deleteTable().run(),
     },
     {
       key: "mergeCells",
-      label: "Merge Cells",
+      label: "Gabung sel",
       execute: (editor: Editor) => editor.chain().focus().mergeCells().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().mergeCells().run(),
     },
     {
       key: "splitCell",
-      label: "Split Cell",
+      label: "Pisah sel",
       execute: (editor: Editor) => editor.chain().focus().splitCell().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().splitCell().run(),
     },
     {
       key: "toggleHeaderColumn",
-      label: "Toggle Header Column",
+      label: "Header kolom",
       execute: (editor: Editor) =>
         editor.chain().focus().toggleHeaderColumn().run(),
       canExecute: (editor: Editor) =>
@@ -344,7 +375,7 @@ export const EditorTableExtensions = createEditorExtension({
     },
     {
       key: "toggleHeaderRow",
-      label: "Toggle Header Row",
+      label: "Header baris",
       execute: (editor: Editor) =>
         editor.chain().focus().toggleHeaderRow().run(),
       canExecute: (editor: Editor) =>
@@ -352,7 +383,7 @@ export const EditorTableExtensions = createEditorExtension({
     },
     {
       key: "toggleHeaderCell",
-      label: "Toggle Header Cell",
+      label: "Header sel",
       execute: (editor: Editor) =>
         editor.chain().focus().toggleHeaderCell().run(),
       canExecute: (editor: Editor) =>
@@ -361,29 +392,29 @@ export const EditorTableExtensions = createEditorExtension({
     {
       key: "toggleTableBorders",
       icon: Grid2x2,
-      label: "Toggle Borders",
-      description: "Show or hide table borders",
+      label: "Alihkan garis",
+      description: "Tampilkan atau sembunyikan garis tabel",
       execute: (editor: Editor) =>
         editor.chain().focus().toggleTableBorders().run(),
       canExecute: (editor: Editor) => editor.isActive("table"),
     },
     {
       key: "mergeOrSplit",
-      label: "Merge or Split",
+      label: "Gabung atau pisah",
       execute: (editor: Editor) => editor.chain().focus().mergeOrSplit().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().mergeOrSplit().run(),
     },
     {
       key: "goToNextCell",
-      label: "Go to Next Cell",
+      label: "Sel berikutnya",
       execute: (editor: Editor) => editor.chain().focus().goToNextCell().run(),
       canExecute: (editor: Editor) =>
         editor.can().chain().focus().goToNextCell().run(),
     },
     {
       key: "goToPreviousCell",
-      label: "Go to Previous Cell",
+      label: "Sel sebelumnya",
       execute: (editor: Editor) =>
         editor.chain().focus().goToPreviousCell().run(),
       canExecute: (editor: Editor) =>
@@ -450,7 +481,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
       {...props}
       editor={editor}
       tippyOptions={{
-        duration: 100,
+        ...EDITOR_BUBBLE_TIPPY_OPTIONS,
         placement: "bottom",
         getReferenceClientRect: () => {
           const { view, state } = editor
@@ -469,7 +500,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
       shouldShow={({ editor: e }) => e.isActive("table")}
       className="w-fit"
     >
-      <div className="bg-popover flex items-center gap-0.5 rounded-md border p-0.5 shadow-md">
+      <div className="bg-popover text-popover-foreground flex items-center gap-0.5 rounded-md border p-0.5 shadow-md">
         {/* Column Actions */}
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
@@ -479,7 +510,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               className="h-7 gap-1 px-2 text-xs"
             >
               <Columns3 className="size-3.5" />
-              Column
+              Kolom
               <ChevronDown className="size-3 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
@@ -496,19 +527,19 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               onClick={() => editor.chain().focus().toggleHeaderColumn().run()}
             >
               <TableProperties className="mr-2 size-3.5" />
-              Toggle Header
+              Header
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => editor.chain().focus().addColumnBefore().run()}
             >
               <ArrowLeftToLine className="mr-2 size-3.5" />
-              Insert Before
+              Sisipkan sebelum
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => editor.chain().focus().addColumnAfter().run()}
             >
               <ArrowRightToLine className="mr-2 size-3.5" />
-              Insert After
+              Sisipkan sesudah
             </DropdownMenuItem>
             <div className="bg-border my-1 h-px" />
             <DropdownMenuItem
@@ -521,7 +552,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               }
             >
               <AlignLeft className="mr-2 size-3.5" />
-              Align Left
+              Rata kiri
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -533,7 +564,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               }
             >
               <AlignCenter className="mr-2 size-3.5" />
-              Align Center
+              Rata tengah
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -545,7 +576,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               }
             >
               <AlignRight className="mr-2 size-3.5" />
-              Align Right
+              Rata kanan
             </DropdownMenuItem>
             <div className="bg-border my-1 h-px" />
             <DropdownMenuItem
@@ -553,7 +584,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 size-3.5" />
-              Delete Column
+              Hapus kolom
             </DropdownMenuItem>
           </DropdownMenuContentPrimitive>
         </DropdownMenu>
@@ -567,7 +598,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               className="h-7 gap-1 px-2 text-xs"
             >
               <Rows3 className="size-3.5" />
-              Row
+              Baris
               <ChevronDown className="size-3 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
@@ -584,19 +615,19 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               onClick={() => editor.chain().focus().toggleHeaderRow().run()}
             >
               <TableProperties className="mr-2 size-3.5" />
-              Toggle Header
+              Header
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => editor.chain().focus().addRowBefore().run()}
             >
               <ArrowUpToLine className="mr-2 size-3.5" />
-              Insert Above
+              Sisipkan di atas
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => editor.chain().focus().addRowAfter().run()}
             >
               <ArrowDownToLine className="mr-2 size-3.5" />
-              Insert Below
+              Sisipkan di bawah
             </DropdownMenuItem>
 
             <div className="bg-border my-1 h-px" />
@@ -610,7 +641,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               }
             >
               <AlignVerticalJustifyStart className="mr-2 size-3.5" />
-              Align Top
+              Atas
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -622,7 +653,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               }
             >
               <AlignVerticalJustifyCenter className="mr-2 size-3.5" />
-              Align Middle
+              Tengah
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
@@ -634,7 +665,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               }
             >
               <AlignVerticalJustifyEnd className="mr-2 size-3.5" />
-              Align Bottom
+              Bawah
             </DropdownMenuItem>
             <div className="bg-border my-1 h-px" />
             <DropdownMenuItem
@@ -642,7 +673,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="mr-2 size-3.5" />
-              Delete Row
+              Hapus baris
             </DropdownMenuItem>
           </DropdownMenuContentPrimitive>
         </DropdownMenu>
@@ -656,7 +687,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               className="h-7 gap-1 px-2 text-xs"
             >
               <Combine className="size-3.5" />
-              Cell
+              Sel
               <ChevronDown className="size-3 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
@@ -674,20 +705,20 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
               disabled={!canMergeCells}
             >
               <Combine className="mr-2 size-3.5" />
-              Merge Cells
+              Gabung sel
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => editor.chain().focus().splitCell().run()}
               disabled={!canSplitCell}
             >
               <Split className="mr-2 size-3.5" />
-              Split Cell
+              Pisah sel
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => editor.chain().focus().toggleHeaderCell().run()}
             >
               <TableProperties className="mr-2 size-3.5" />
-              Toggle Header Cell
+              Header sel
             </DropdownMenuItem>
           </DropdownMenuContentPrimitive>
         </DropdownMenu>
@@ -701,14 +732,14 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
             !withBorders && "bg-accent text-accent-foreground"
           )}
           onClick={() => editor.chain().focus().toggleTableBorders().run()}
-          title={withBorders ? "Sembunyikan border" : "Tampilkan border"}
+          title={withBorders ? "Sembunyikan garis" : "Tampilkan garis"}
         >
           {withBorders ? (
             <Grid2x2 className="size-3.5" />
           ) : (
             <Square className="size-3.5" />
           )}
-          Border
+          Garis
         </Button>
 
         {/* Quick Delete Actions */}
@@ -719,7 +750,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
             className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 gap-1 px-2 text-xs"
             onClick={() => editor.chain().focus().deleteColumn().run()}
             disabled={!canDeleteColumn}
-            title="Delete Column"
+            title="Hapus kolom"
           >
             <Columns3 className="size-3.5" />
           </Button>
@@ -729,7 +760,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
             className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 gap-1 px-2 text-xs"
             onClick={() => editor.chain().focus().deleteRow().run()}
             disabled={!canDeleteRow}
-            title="Delete Row"
+            title="Hapus baris"
           >
             <Rows3 className="size-3.5" />
           </Button>
@@ -741,7 +772,7 @@ export function EditorBubbleMenuTable(props: EditorBubbleMenuTableProps) {
           size="sm"
           className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7 p-0"
           onClick={() => editor.chain().focus().deleteTable().run()}
-          title="Delete Table"
+          title="Hapus tabel"
         >
           <Trash2 className="size-3.5" />
         </Button>

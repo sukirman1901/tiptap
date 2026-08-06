@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Suspense, useCallback, useEffect, useRef, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 
 import {
   canEditBody,
@@ -14,7 +14,6 @@ import {
 } from "@/features/documents/domain/status"
 import {
   loadDocument,
-  saveAsTemplate,
   saveDocument,
 } from "@/features/documents/storage/document-store"
 import type { AgreedDocument } from "@/features/documents/types"
@@ -36,26 +35,6 @@ import {
 import { ContractCommentsPanel } from "../components/contract-comments-panel"
 import { ContractVariablesPanel } from "../components/contract-variables-panel"
 import { FullFeaturedEditor } from "../components/full-featured-editor"
-
-const DEMO_ROLE_KEY = "agreed:demo-role"
-
-function loadDemoRole(): DocumentRole {
-  if (typeof window === "undefined") return "initiator"
-  try {
-    const raw = sessionStorage.getItem(DEMO_ROLE_KEY)
-    return raw === "party" ? "party" : "initiator"
-  } catch {
-    return "initiator"
-  }
-}
-
-function persistDemoRole(role: DocumentRole) {
-  try {
-    sessionStorage.setItem(DEMO_ROLE_KEY, role)
-  } catch {
-    /* ignore quota / private mode */
-  }
-}
 
 function SidebarTabs({
   tab,
@@ -84,7 +63,7 @@ function SidebarTabs({
             : "text-muted-foreground hover:text-foreground border-transparent"
         )}
       >
-        Variabel
+        Properti
       </button>
       <button
         type="button"
@@ -129,12 +108,12 @@ interface PlaygroundInnerProps {
 
 function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
   const searchParams = useSearchParams()
-  const router = useRouter()
-  const forceParty = searchParams.get("review") === "1"
+  /** Review link (?review=1) = pihak lain; otherwise inisiator. */
+  const role: DocumentRole =
+    searchParams.get("review") === "1" ? "party" : "initiator"
 
   const [doc, setDoc] = useState<AgreedDocument | null | undefined>(undefined)
   const docRef = useRef<AgreedDocument | null | undefined>(undefined)
-  const [storedRole, setStoredRole] = useState<DocumentRole>("initiator")
   const [tab, setTab] = useState<"variables" | "comments">("variables")
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
   const [focusComment, setFocusComment] = useState<ContractComment | null>(null)
@@ -144,10 +123,6 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
   useEffect(() => {
     docRef.current = doc
   }, [doc])
-
-  useEffect(() => {
-    setStoredRole(loadDemoRole())
-  }, [])
 
   useEffect(() => {
     if (!documentId) {
@@ -163,7 +138,6 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
     return () => window.clearTimeout(t)
   }, [feedback])
 
-  const role: DocumentRole = forceParty ? "party" : storedRole
   const bodyEditable = doc ? canEditBody(doc.status, role) : false
   const isReviewLike = Boolean(doc) && !bodyEditable
 
@@ -200,23 +174,6 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
     } else if (status === "selesai") {
       setFeedback("Dokumen selesai (demo)")
     }
-  }
-
-  function handleRoleChange(next: DocumentRole) {
-    setStoredRole(next)
-    persistDemoRole(next)
-    if (forceParty && next === "initiator") {
-      const url = new URL(window.location.href)
-      url.searchParams.delete("review")
-      router.replace(url.pathname + url.search)
-    }
-  }
-
-  function handleSaveAsTemplate() {
-    const current = docRef.current
-    if (!current) return
-    saveAsTemplate({ title: current.title, draft: current.draft })
-    setFeedback("Template disimpan")
   }
 
   if (doc === undefined) return null
@@ -280,10 +237,8 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
         documentTitle={doc.title}
         documentStatus={doc.status}
         documentRole={role}
-        onDocumentRoleChange={handleRoleChange}
         onDocumentStatusChange={handleStatusChange}
         onDocumentSave={handleSave}
-        onSaveAsTemplate={handleSaveAsTemplate}
         documentFeedback={feedback}
         sidebar={desktopSidebar}
         activeCommentId={activeCommentId}

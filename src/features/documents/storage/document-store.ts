@@ -51,6 +51,27 @@ export function saveDocument(doc: AgreedDocument): void {
   writeDocs([next, ...others])
 }
 
+export function deleteDocument(id: string): boolean {
+  const before = readDocs()
+  const next = before.filter((d) => d.id !== id)
+  if (next.length === before.length) return false
+  writeDocs(next)
+  return true
+}
+
+export function renameDocument(id: string, title: string): AgreedDocument | null {
+  const doc = loadDocument(id)
+  if (!doc) return null
+  const next = {
+    ...doc,
+    title: title.trim() || "Dokumen tanpa judul",
+    updatedAt: new Date().toISOString(),
+  }
+  const others = readDocs().filter((d) => d.id !== id)
+  writeDocs([next, ...others])
+  return next
+}
+
 export function listTemplates(): UserTemplate[] {
   if (typeof window === "undefined") return []
   try {
@@ -76,4 +97,13 @@ export function saveAsTemplate(input: {
   const all = listTemplates()
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify([t, ...all]))
   return t
+}
+
+export function deleteTemplate(id: string): boolean {
+  if (typeof window === "undefined") return false
+  const all = listTemplates()
+  const next = all.filter((t) => t.id !== id)
+  if (next.length === all.length) return false
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(next))
+  return true
 }

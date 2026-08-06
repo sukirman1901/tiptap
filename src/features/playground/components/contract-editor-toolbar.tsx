@@ -149,7 +149,7 @@ export function ContractEditorToolbar({
   onOpenMobilePanel,
   commentCount = 0,
 }: {
-  /** Opens Variabel/Komentar sheet on small screens */
+  /** Opens Properti/Komentar sheet on small screens */
   onOpenMobilePanel?: () => void
   commentCount?: number
 }) {
@@ -237,7 +237,7 @@ export function ContractEditorToolbar({
             size="icon"
             className="relative size-8 shrink-0 lg:hidden"
             aria-label="Panel dokumen"
-            title="Variabel & komentar"
+            title="Properti & komentar"
             onClick={onOpenMobilePanel}
           >
             <PanelRight className="size-4" />

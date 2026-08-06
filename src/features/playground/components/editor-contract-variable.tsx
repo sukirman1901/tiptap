@@ -202,7 +202,7 @@ const VariableList = React.forwardRef<VariableListRef, VariableListProps>(
     if (items.length === 0) {
       return (
         <div className="text-muted-foreground p-3 text-center text-sm">
-          Belum ada variabel — tambah di panel kanan.
+          Belum ada properti — tambah di panel kanan.
         </div>
       )
     }

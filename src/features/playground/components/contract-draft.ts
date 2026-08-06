@@ -52,7 +52,7 @@ export function createField(input: {
   token?: string
   tokenManual?: boolean
 }): TemplateField {
-  const label = input.label.trim() || "Variabel"
+  const label = input.label.trim() || "Properti"
   const token = input.token ?? slugifyToken(label)
   return {
     id: input.id ?? crypto.randomUUID(),

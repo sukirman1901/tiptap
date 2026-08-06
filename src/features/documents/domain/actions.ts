@@ -23,9 +23,9 @@ export function availableActions(
   if (role === "initiator") {
     switch (status) {
       case "draf":
-        return [...base, "simpan", "edit_body", "kirim_review", "bagikan_review"]
+        return [...base, "simpan", "edit_body", "bagikan_review"]
       case "dalam_review":
-        return [...base, "simpan", "edit_body", "kirim_review", "bagikan_review"]
+        return [...base, "simpan", "edit_body", "bagikan_review"]
       case "review_disetujui":
         return [...base, "ttd_materai"]
       case "menunggu_ttd_pihak":

@@ -1,24 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import {
-  Check,
-  Eye,
-  FileStack,
-  Link2,
-  PenLine,
-  Save,
-  Send,
-} from "lucide-react"
+import { Check, Eye, Link2, PenLine, Save } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Sheet,
   SheetContent,
@@ -49,10 +34,8 @@ export interface DocumentBarProps {
   title: string
   status: DocumentStatus
   role: DocumentRole
-  onRoleChange: (role: DocumentRole) => void
   onStatusChange: (status: DocumentStatus) => void
   onSave: () => void
-  onSaveAsTemplate?: () => void
   /** Derived: !canEditBody → review-like chrome */
   mode?: "edit" | "review"
   feedback?: string | null
@@ -78,7 +61,6 @@ const ACTION_META: Partial<
   preview: { label: "Preview", icon: Eye, variant: "outline" },
   bagikan_review: { label: "Bagikan", icon: Link2, variant: "outline" },
   simpan: { label: "Simpan", icon: Save, variant: "default" },
-  kirim_review: { label: "Kirim review", icon: Send, variant: "default" },
   approve_review: { label: "Approve", icon: Check, variant: "default" },
   ttd_materai: { label: "TTD + materai", icon: PenLine, variant: "default" },
   ttd_pihak: { label: "TTD pihak", icon: PenLine, variant: "default" },
@@ -89,10 +71,8 @@ export function DocumentBar({
   title,
   status,
   role,
-  onRoleChange,
   onStatusChange,
   onSave,
-  onSaveAsTemplate,
   mode = "edit",
   feedback = null,
   className,
@@ -132,6 +112,9 @@ export function DocumentBar({
 
   async function handleShareReview() {
     onSave()
+    if (canTransition(status, "dalam_review")) {
+      onStatusChange("dalam_review")
+    }
     const url = new URL(window.location.href)
     url.searchParams.set("review", "1")
     try {
@@ -139,19 +122,6 @@ export function DocumentBar({
       setLinkCopied(true)
     } catch {
       window.prompt("Salin tautan review:", url.toString())
-    }
-  }
-
-  async function handleKirimReview() {
-    if (!canTransition(status, "dalam_review")) return
-    onStatusChange("dalam_review")
-    const url = new URL(window.location.href)
-    url.searchParams.set("review", "1")
-    try {
-      await navigator.clipboard.writeText(url.toString())
-      setLinkCopied(true)
-    } catch {
-      /* optional copy — ignore */
     }
   }
 
@@ -181,9 +151,6 @@ export function DocumentBar({
       case "bagikan_review":
         void handleShareReview()
         break
-      case "kirim_review":
-        void handleKirimReview()
-        break
       case "approve_review":
         handleApprove()
         break
@@ -199,10 +166,8 @@ export function DocumentBar({
   }
 
   const phaseActions = actions.filter(
-    (a) => a !== "edit_body" && ACTION_META[a]
+    (a) => a !== "edit_body" && a !== "kirim_review" && ACTION_META[a]
   )
-  const showSaveTemplate =
-    role === "initiator" && status !== "selesai" && Boolean(onSaveAsTemplate)
 
   const subtitle = feedback
     ? feedback
@@ -220,50 +185,24 @@ export function DocumentBar({
     <>
       <div
         className={cn(
-          "border-border/60 flex flex-col gap-2 border-b px-3 py-2 sm:gap-3 sm:px-4",
+          "border-border/60 flex flex-col gap-2 border-b px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4",
           className
         )}
       >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium tracking-tight">
-              {title || (isReview ? "Review draf" : "Draf kontrak")}
-            </p>
-            <p
-              className="text-muted-foreground text-xs"
-              role="status"
-              aria-live="polite"
-            >
-              {subtitle}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <label className="text-muted-foreground sr-only" htmlFor="demo-role">
-              Peran demo
-            </label>
-            <Select
-              value={role}
-              onValueChange={(v) =>
-                onRoleChange(v === "party" ? "party" : "initiator")
-              }
-            >
-              <SelectTrigger
-                id="demo-role"
-                className="h-8 w-[min(100%,11.5rem)] shadow-none"
-                aria-label="Saya: peran demo"
-              >
-                <SelectValue placeholder="Peran" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="initiator">Saya: Inisiator</SelectItem>
-                <SelectItem value="party">Saya: Pihak lain</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium tracking-tight">
+            {title || (isReview ? "Review draf" : "Draf kontrak")}
+          </p>
+          <p
+            className="text-muted-foreground text-xs"
+            role="status"
+            aria-live="polite"
+          >
+            {subtitle}
+          </p>
         </div>
 
-        <div className="flex w-full flex-wrap gap-2">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
           {phaseActions.map((action) => {
             const meta = ACTION_META[action]
             if (!meta) return null
@@ -271,9 +210,7 @@ export function DocumentBar({
             const label =
               action === "bagikan_review" && linkCopied
                 ? "Tautan disalin"
-                : action === "kirim_review" && linkCopied
-                  ? "Dikirim · tautan disalin"
-                  : meta.label
+                : meta.label
             return (
               <Button
                 key={action}
@@ -288,18 +225,6 @@ export function DocumentBar({
               </Button>
             )
           })}
-          {showSaveTemplate && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 flex-1 shadow-none sm:h-8 sm:flex-initial sm:px-3"
-              onClick={onSaveAsTemplate}
-            >
-              <FileStack className="size-3.5" aria-hidden />
-              Simpan sebagai template
-            </Button>
-          )}
         </div>
       </div>
 

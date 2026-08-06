@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest"
 import { availableActions } from "./actions"
 
 describe("availableActions", () => {
-  it("initiator in draf can send review and save", () => {
+  it("initiator in draf can share review and save", () => {
     const a = availableActions("draf", "initiator")
-    expect(a).toContain("kirim_review")
+    expect(a).toContain("bagikan_review")
     expect(a).toContain("simpan")
+    expect(a).not.toContain("kirim_review")
     expect(a).not.toContain("approve_review")
   })
 
-  it("party in dalam_review can comment and approve", () => {
+  it("party in dalam_review can approve", () => {
     const a = availableActions("dalam_review", "party")
     expect(a).toContain("approve_review")
     expect(a).not.toContain("kirim_review")
