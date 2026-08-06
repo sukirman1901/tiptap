@@ -4,11 +4,15 @@
 
 export { FullFeaturedEditor } from "./full-featured-editor"
 export { DocumentCanvas } from "./document-canvas"
-export { ContractMetaForm } from "./contract-meta-form"
-export { DUMMY_CONTRACT_CONTENT } from "./dummy-contract-content"
+export { ContractVariablesPanel } from "./contract-variables-panel"
+export { ContractDraftStoreSync, useContractDraftStore } from "./contract-draft-store"
+export { createStarterPerjanjianDraft } from "./starter-perjanjian-ks"
 export {
-  INITIAL_CONTRACT_META,
+  emptyDraft,
+  loadDraftFromStorage,
+  saveDraftToStorage,
   formatRp,
-  type ContractMeta,
-} from "./contract-meta"
-export { CONTRACT_VARIABLES, type ContractVariableKey } from "./contract-variables"
+  type ContractDraft,
+  type TemplateField,
+  type FieldType,
+} from "./contract-draft"

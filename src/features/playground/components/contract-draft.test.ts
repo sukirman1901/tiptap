@@ -5,7 +5,6 @@ import {
   isFieldValueEmpty,
   resolveFieldDisplay,
   slugifyToken,
-  type ContractDraft,
   type TemplateField,
 } from "./contract-draft"
 

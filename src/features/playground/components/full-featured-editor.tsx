@@ -4,7 +4,7 @@
  * Full-Featured Editor
  *
  * Contract workspace editor: A4 canvas, formatting toolbar, slash menu,
- * tables/images, and live document variables from the meta form.
+ * tables/images, and live document variables from the draft store.
  */
 
 import type { Editor } from "@tiptap/react"
@@ -53,11 +53,10 @@ import {
 } from "@/components/ui/sheet"
 
 import { DocumentCanvas } from "./document-canvas"
-import { DUMMY_CONTRACT_CONTENT } from "./dummy-contract-content"
-import { ContractMetaForm } from "./contract-meta-form"
-import { ContractMetaStoreSync } from "./contract-meta-store"
+import { ContractDraftStoreSync } from "./contract-draft-store"
+import { type ContractDraft } from "./contract-draft"
+import { ContractVariablesPanel } from "./contract-variables-panel"
 import { EditorContractVariableExtension } from "./editor-contract-variable"
-import { type ContractMeta } from "./contract-meta"
 
 import { EditorImageExtension } from "@/registry/editor/editor-image"
 import { EditorTableExtensions } from "@/registry/editor/editor-table"
@@ -99,6 +98,7 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
+  Braces,
   CheckSquare,
   Code,
   ImageUp,
@@ -167,7 +167,7 @@ const shouldShowTextBubbleMenu = ({
   return true
 }
 
-const slashMenuItems = [
+const staticSlashMenuItems = [
   ...defaultSlashMenuItems,
   {
     title: "Henti halaman",
@@ -178,7 +178,6 @@ const slashMenuItems = [
       editor?.chain().focus().setPageBreak().run()
     },
   },
-  // Task 6: restore dynamic slash items from draft.fields
 ]
 
 function ToolbarOverflowMenu() {
@@ -323,26 +322,44 @@ function ToolbarOverflowMenu() {
 }
 
 interface FullFeaturedEditorProps {
-  content?: string
-  onUpdate?: (html: string) => void
-  meta: ContractMeta
-  onMetaChange: (next: ContractMeta) => void
+  draft: ContractDraft
+  onDraftChange: (next: ContractDraft) => void
   /** Desktop sidebar (lg+). Mobile uses sheet. */
   sidebar?: ReactNode
 }
 
 export function FullFeaturedEditor({
-  content = DUMMY_CONTRACT_CONTENT,
-  onUpdate,
-  meta,
-  onMetaChange,
+  draft,
+  onDraftChange,
   sidebar,
 }: FullFeaturedEditorProps) {
   const [infoOpen, setInfoOpen] = useState(false)
 
+  const slashMenuItems = [
+    ...staticSlashMenuItems,
+    ...draft.fields.map((f) => ({
+      title: `{${f.token}}`,
+      description: `Variabel: ${f.label}`,
+      icon: Braces,
+      searchTerms: ["var", "variabel", f.token, f.label.toLowerCase()],
+      command: (editor: Editor | null) => {
+        editor
+          ?.chain()
+          .focus()
+          .insertContractVariable({ id: f.id, token: f.token })
+          .run()
+      },
+    })),
+  ]
+
+  // Remount only when field id set changes (slash configure is mount-only).
+  // Value keystrokes must not remount the editor.
+  const editorFieldsKey = draft.fields.map((f) => f.id).join("|")
+
   return (
     <EditorProvider
-      content={content}
+      key={editorFieldsKey}
+      content={draft.contentHtml}
       extensions={[
         // Essential extension
         EditorEssentialExtension,
@@ -390,10 +407,10 @@ export function FullFeaturedEditor({
         }),
       ]}
       onUpdate={({ editor }) => {
-        onUpdate?.(editor.getHTML())
+        onDraftChange({ ...draft, contentHtml: editor.getHTML() })
       }}
     >
-      <ContractMetaStoreSync meta={meta} />
+      <ContractDraftStoreSync fields={draft.fields} values={draft.values} />
 
       <div className="mx-auto flex min-h-[calc(100dvh-3.5rem)] w-full max-w-6xl flex-col gap-4 px-4 py-4 lg:flex-row lg:gap-0 lg:py-4">
         {/* Digdaya-style wrap: toolbar + paper stage in one bordered card */}
@@ -459,8 +476,8 @@ export function FullFeaturedEditor({
                       variant="ghost"
                       size="icon"
                       className="size-8 shrink-0 lg:hidden"
-                      aria-label="Informasi dokumen"
-                      title="Informasi dokumen"
+                      aria-label="Variabel dokumen"
+                      title="Variabel dokumen"
                     >
                       <PanelRight className="size-4" />
                     </Button>
@@ -470,12 +487,12 @@ export function FullFeaturedEditor({
                     className="w-full gap-0 overflow-y-auto p-0 sm:max-w-sm"
                   >
                     <SheetHeader className="sr-only">
-                      <SheetTitle>Informasi dokumen</SheetTitle>
+                      <SheetTitle>Variabel dokumen</SheetTitle>
                     </SheetHeader>
-                    <ContractMetaForm
+                    <ContractVariablesPanel
                       bare
-                      meta={meta}
-                      onChange={onMetaChange}
+                      draft={draft}
+                      onChange={onDraftChange}
                       className="px-4 py-5"
                     />
                   </SheetContent>

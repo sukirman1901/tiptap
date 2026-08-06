@@ -1,18 +1,40 @@
 "use client"
 
-import { useState } from "react"
-import { ContractMetaForm } from "../components/contract-meta-form"
-import { INITIAL_CONTRACT_META } from "../components/contract-meta"
+import { useEffect, useState } from "react"
+import {
+  loadDraftFromStorage,
+  saveDraftToStorage,
+  type ContractDraft,
+} from "../components/contract-draft"
+import { ContractVariablesPanel } from "../components/contract-variables-panel"
+import { createStarterPerjanjianDraft } from "../components/starter-perjanjian-ks"
 import { FullFeaturedEditor } from "../components/full-featured-editor"
 
+/**
+ * Playground default: hydrate from LocalStorage, else Perjanjian KS starter.
+ * Later “dokumen baru” can use emptyDraft() + template picker instead.
+ */
 const PlaygroundPage = () => {
-  const [meta, setMeta] = useState(INITIAL_CONTRACT_META)
+  const [draft, setDraft] = useState<ContractDraft | null>(null)
+
+  useEffect(() => {
+    setDraft(loadDraftFromStorage() ?? createStarterPerjanjianDraft())
+  }, [])
+
+  useEffect(() => {
+    if (!draft) return
+    saveDraftToStorage(draft)
+  }, [draft])
+
+  if (!draft) return null
 
   return (
     <FullFeaturedEditor
-      meta={meta}
-      onMetaChange={setMeta}
-      sidebar={<ContractMetaForm meta={meta} onChange={setMeta} />}
+      draft={draft}
+      onDraftChange={setDraft}
+      sidebar={
+        <ContractVariablesPanel draft={draft} onChange={setDraft} />
+      }
     />
   )
 }

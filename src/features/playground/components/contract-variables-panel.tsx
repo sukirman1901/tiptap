@@ -83,7 +83,8 @@ export function ContractVariablesPanel({
       )
       if (!ok) return
     }
-    const { [field.id]: _removed, ...restValues } = draft.values
+    const restValues = { ...draft.values }
+    delete restValues[field.id]
     onChange({
       ...draft,
       fields: draft.fields.filter((f) => f.id !== field.id),
