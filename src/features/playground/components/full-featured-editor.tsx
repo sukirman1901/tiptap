@@ -8,7 +8,7 @@
  */
 
 import type { Editor } from "@tiptap/react"
-import { useState, type ReactNode } from "react"
+import { useRef, useState, type ReactNode } from "react"
 
 import {
   EditorBubbleMenu,
@@ -334,6 +334,8 @@ export function FullFeaturedEditor({
   sidebar,
 }: FullFeaturedEditorProps) {
   const [infoOpen, setInfoOpen] = useState(false)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
 
   const slashMenuItems = [
     ...staticSlashMenuItems,
@@ -352,9 +354,11 @@ export function FullFeaturedEditor({
     })),
   ]
 
-  // Remount only when field id set changes (slash configure is mount-only).
+  // Remount when field schema (id/token/label) changes — slash configure is mount-only.
   // Value keystrokes must not remount the editor.
-  const editorFieldsKey = draft.fields.map((f) => f.id).join("|")
+  const editorFieldsKey = draft.fields
+    .map((f) => `${f.id}:${f.token}:${f.label}`)
+    .join("|")
 
   return (
     <EditorProvider
@@ -407,7 +411,8 @@ export function FullFeaturedEditor({
         }),
       ]}
       onUpdate={({ editor }) => {
-        onDraftChange({ ...draft, contentHtml: editor.getHTML() })
+        const html = editor.getHTML()
+        onDraftChange({ ...draftRef.current, contentHtml: html })
       }}
     >
       <ContractDraftStoreSync fields={draft.fields} values={draft.values} />
