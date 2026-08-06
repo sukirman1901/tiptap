@@ -150,5 +150,6 @@ export function createStarterPerjanjianDraft(): ContractDraft {
       [STARTER_FIELD_IDS.nilai]: "100000000",
     },
     contentHtml,
+    comments: [],
   }
 }

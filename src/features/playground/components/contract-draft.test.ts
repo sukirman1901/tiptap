@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest"
 import {
+  buildPreviewHtml,
   createField,
   formatCurrencyDisplay,
   isFieldValueEmpty,
   resolveFieldDisplay,
   slugifyToken,
+  variableHtml,
   type TemplateField,
 } from "./contract-draft"
 
@@ -60,5 +62,20 @@ describe("formatCurrencyDisplay", () => {
   it("formats digit groups", () => {
     expect(formatCurrencyDisplay("100000000")).toBe("100.000.000")
     expect(formatCurrencyDisplay("")).toBe("")
+  })
+})
+
+describe("buildPreviewHtml", () => {
+  it("replaces variable chips with display values", () => {
+    const field = createField({ label: "Nama", type: "text", id: "f1", token: "nama" })
+    const html = `<p>Halo ${variableHtml("f1", "nama")}</p>`
+    const out = buildPreviewHtml({
+      fields: [field],
+      values: { f1: "Budi" },
+      contentHtml: html,
+      comments: [],
+    })
+    expect(out).toContain("Budi")
+    expect(out).not.toContain("contract-variable")
   })
 })

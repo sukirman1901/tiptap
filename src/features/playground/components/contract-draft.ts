@@ -9,10 +9,26 @@ export type TemplateField = {
   required?: boolean
 }
 
+export type ContractCommentStatus = "open" | "resolved"
+
+export type ContractComment = {
+  id: string
+  /** ProseMirror positions at creation time (best-effort). */
+  from: number
+  to: number
+  /** Selected text snapshot for display + orphan fallback. */
+  quote: string
+  body: string
+  authorName: string
+  createdAt: string
+  status: ContractCommentStatus
+}
+
 export type ContractDraft = {
   fields: TemplateField[]
   values: Record<string, string>
   contentHtml: string
+  comments: ContractComment[]
 }
 
 /** Bump when default seed shape changes so old LocalStorage drafts are ignored. */
@@ -113,8 +129,80 @@ export function variableHtml(id: string, token: string): string {
   return `<span data-type="contract-variable" data-key="${id}" data-token="${token}"></span>`
 }
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+}
+
+/**
+ * Soften legacy header chrome baked into saved HTML
+ * (`text-muted-foreground`, `bg-muted/10`, `font-medium` on <th>).
+ */
+function normalizePreviewTableHtml(html: string): string {
+  return html.replace(/<th\b([^>]*)>/gi, (_full, attrs: string) => {
+    let next = attrs
+    next = next.replace(
+      /\bfont-medium\b|\btext-muted-foreground\b|\bbg-muted\/10\b/g,
+      ""
+    )
+    next = next.replace(/\s+/g, " ").trim()
+    return next ? `<th ${next}>` : "<th>"
+  })
+}
+
+/** HTML for Preview: merge-field chips → nilai tampilan (atau {token} jika kosong). */
+export function buildPreviewHtml(draft: ContractDraft): string {
+  let html = draft.contentHtml || "<p></p>"
+  for (const field of draft.fields) {
+    const display = escapeHtml(
+      resolveFieldDisplay(field, draft.values[field.id] ?? "")
+    )
+    const byKey = new RegExp(
+      `<span[^>]*data-type=["']contract-variable["'][^>]*data-key=["']${field.id}["'][^>]*>[\\s\\S]*?<\\/span>`,
+      "gi"
+    )
+    const byKeyAlt = new RegExp(
+      `<span[^>]*data-key=["']${field.id}["'][^>]*data-type=["']contract-variable["'][^>]*>[\\s\\S]*?<\\/span>`,
+      "gi"
+    )
+    html = html.replace(byKey, display).replace(byKeyAlt, display)
+  }
+  // Orphan chips still in doc
+  html = html.replace(
+    /<span[^>]*data-type=["']contract-variable["'][^>]*data-token=["']([^"']+)["'][^>]*>[\s\S]*?<\/span>/gi,
+    (_m, token: string) => `{${escapeHtml(token)}}`
+  )
+  html = html.replace(
+    /<span[^>]*data-token=["']([^"']+)["'][^>]*data-type=["']contract-variable["'][^>]*>[\s\S]*?<\/span>/gi,
+    (_m, token: string) => `{${escapeHtml(token)}}`
+  )
+  return normalizePreviewTableHtml(html)
+}
+
 export function emptyDraft(): ContractDraft {
-  return { fields: [], values: {}, contentHtml: "<p></p>" }
+  return { fields: [], values: {}, contentHtml: "<p></p>", comments: [] }
+}
+
+export function createComment(input: {
+  from: number
+  to: number
+  quote: string
+  body: string
+  authorName: string
+}): ContractComment {
+  return {
+    id: crypto.randomUUID(),
+    from: input.from,
+    to: input.to,
+    quote: input.quote.trim(),
+    body: input.body.trim(),
+    authorName: input.authorName.trim() || "Anonim",
+    createdAt: new Date().toISOString(),
+    status: "open",
+  }
 }
 
 export function loadDraftFromStorage(): ContractDraft | null {
@@ -130,6 +218,7 @@ export function loadDraftFromStorage(): ContractDraft | null {
       fields: parsed.fields,
       values: parsed.values ?? {},
       contentHtml: parsed.contentHtml || "<p></p>",
+      comments: Array.isArray(parsed.comments) ? parsed.comments : [],
     }
   } catch {
     return null

@@ -108,7 +108,7 @@ export function ContractVariablesPanel({
   }
 
   const body = (
-    <div className={cn("flex flex-col gap-5", !bare && "px-4 py-5 sm:px-5")}>
+    <div className="flex flex-col gap-5 px-4 py-5 sm:px-5">
       <div className="space-y-1.5">
         <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">
           Variabel

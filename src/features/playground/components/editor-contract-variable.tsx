@@ -33,7 +33,13 @@ declare module "@tiptap/core" {
   }
 }
 
-function ContractVariableView({ node }: NodeViewProps) {
+function ContractVariableView({
+  node,
+  HTMLAttributes,
+  selected,
+  getPos,
+  editor,
+}: NodeViewProps) {
   const { fields, values } = useContractDraftStore()
   const id = String(node.attrs.key ?? "")
   const tokenAttr = String(node.attrs.token ?? "")
@@ -44,16 +50,33 @@ function ContractVariableView({ node }: NodeViewProps) {
     : `{${token}}`
   const empty = display === `{${token}}`
 
+  const selectNode = React.useCallback(
+    (event: React.MouseEvent) => {
+      // Atom = whole chip only (no partial text caret). Click selects the node
+      // so toolbar marks can target it. Don't hijack drag-range selections.
+      if (event.detail === 0) return
+      const pos = getPos()
+      if (typeof pos !== "number" || !editor) return
+      editor.chain().focus().setNodeSelection(pos).run()
+    },
+    [editor, getPos]
+  )
+
   return (
     <NodeViewWrapper
       as="span"
+      {...HTMLAttributes}
       className={cn(
         "contract-variable",
-        empty && "contract-variable--empty"
+        empty && "contract-variable--empty",
+        selected && "contract-variable--selected",
+        HTMLAttributes.className
       )}
       data-key={id}
       data-token={token}
       contentEditable={false}
+      draggable={false}
+      onClick={selectNode}
     >
       {/* Inner element required — TipTap BubbleMenu crashes on bare text in atom node views */}
       <span>{display}</span>
@@ -67,7 +90,10 @@ const ContractVariableNode = Node.create({
   inline: true,
   atom: true,
   selectable: true,
-  draggable: true,
+  // Drag steals the click that should NodeSelect the chip
+  draggable: false,
+  // Allow bold / italic / color / font from surrounding toolbar marks
+  marks: "_",
 
   addAttributes() {
     return {
@@ -313,26 +339,33 @@ const ContractVariableMention = Extension.create({
 const VARIABLE_STYLES = `
   .contract-variable {
     display: inline;
-    padding: 0 0.15em;
-    border-radius: 0.2em;
-    background: color-mix(in oklab, hsl(var(--foreground)) 6%, transparent);
+    padding: 0 0.12em;
+    border-radius: 0.15em;
+    background: color-mix(in oklab, hsl(var(--foreground)) 5%, transparent);
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
-    border-bottom: 1.5px solid color-mix(in oklab, hsl(var(--foreground)) 28%, transparent);
-    font-weight: 600;
+    border-bottom: 1.5px solid color-mix(in oklab, hsl(var(--foreground)) 22%, transparent);
+    /* Inherit document / mark styles (bold, italic, color, font) */
+    font-weight: inherit;
+    font-style: inherit;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    line-height: inherit;
     white-space: nowrap;
-    cursor: default;
+    cursor: pointer;
+    user-select: none;
   }
   .contract-variable--empty {
     color: hsl(var(--muted-foreground));
-    font-weight: 500;
-    font-style: italic;
     border-bottom-style: dashed;
   }
+  .contract-variable--selected,
   .ProseMirror-selectednode.contract-variable,
   .ProseMirror-selectednode .contract-variable {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 1px;
+    background: color-mix(in oklab, hsl(var(--ring)) 14%, transparent);
   }
   .tippy-box[data-theme~='contract-variable-menu'] {
     background-color: transparent;
@@ -346,7 +379,6 @@ const VARIABLE_STYLES = `
     .contract-variable {
       background: transparent;
       border-bottom: none;
-      font-weight: inherit;
       padding: 0;
     }
   }
@@ -356,11 +388,13 @@ const STYLE_ID = "editor-contract-variable-styles"
 
 function injectVariableStyles() {
   if (typeof document === "undefined") return
-  if (document.getElementById(STYLE_ID)) return
-  const style = document.createElement("style")
-  style.id = STYLE_ID
+  let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null
+  if (!style) {
+    style = document.createElement("style")
+    style.id = STYLE_ID
+    document.head.appendChild(style)
+  }
   style.textContent = VARIABLE_STYLES
-  document.head.appendChild(style)
 }
 
 export const EditorContractVariableExtension = createEditorExtension({

@@ -1,42 +1,342 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import Link from "next/link"
+import { Suspense, useCallback, useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+
 import {
-  emptyDraft,
-  loadDraftFromStorage,
-  saveDraftToStorage,
+  canEditBody,
+  type DocumentRole,
+} from "@/features/documents/domain/actions"
+import {
+  canTransition,
+  type DocumentStatus,
+} from "@/features/documents/domain/status"
+import {
+  loadDocument,
+  saveAsTemplate,
+  saveDocument,
+} from "@/features/documents/storage/document-store"
+import type { AgreedDocument } from "@/features/documents/types"
+import { cn } from "@/lib/utils"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
+import { Button } from "@/components/ui/button"
+import { MessageSquareText } from "lucide-react"
+
+import {
+  type ContractComment,
   type ContractDraft,
 } from "../components/contract-draft"
+import { ContractCommentsPanel } from "../components/contract-comments-panel"
 import { ContractVariablesPanel } from "../components/contract-variables-panel"
 import { FullFeaturedEditor } from "../components/full-featured-editor"
 
-/**
- * Blank by default — no hardcoded fields. User adds variables via the panel.
- * Optional starter template (`createStarterPerjanjianDraft`) is for a future
- * “pakai template” picker, not auto-loaded.
- */
-const PlaygroundPage = () => {
-  const [draft, setDraft] = useState<ContractDraft | null>(null)
+const DEMO_ROLE_KEY = "agreed:demo-role"
+
+function loadDemoRole(): DocumentRole {
+  if (typeof window === "undefined") return "initiator"
+  try {
+    const raw = sessionStorage.getItem(DEMO_ROLE_KEY)
+    return raw === "party" ? "party" : "initiator"
+  } catch {
+    return "initiator"
+  }
+}
+
+function persistDemoRole(role: DocumentRole) {
+  try {
+    sessionStorage.setItem(DEMO_ROLE_KEY, role)
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+function SidebarTabs({
+  tab,
+  onTabChange,
+  commentCount,
+}: {
+  tab: "variables" | "comments"
+  onTabChange: (t: "variables" | "comments") => void
+  commentCount: number
+}) {
+  return (
+    <div
+      className="border-border/60 flex shrink-0 gap-4 border-b px-4 sm:px-5"
+      role="tablist"
+      aria-label="Panel dokumen"
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={tab === "variables"}
+        onClick={() => onTabChange("variables")}
+        className={cn(
+          "-mb-px border-b-2 px-0.5 py-3 text-xs font-medium transition-colors",
+          tab === "variables"
+            ? "border-foreground text-foreground"
+            : "text-muted-foreground hover:text-foreground border-transparent"
+        )}
+      >
+        Variabel
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={tab === "comments"}
+        onClick={() => onTabChange("comments")}
+        className={cn(
+          "-mb-px border-b-2 px-0.5 py-3 text-xs font-medium transition-colors",
+          tab === "comments"
+            ? "border-foreground text-foreground"
+            : "text-muted-foreground hover:text-foreground border-transparent"
+        )}
+      >
+        Komentar
+        {commentCount > 0 ? ` (${commentCount})` : ""}
+      </button>
+    </div>
+  )
+}
+
+function NotFoundState() {
+  return (
+    <div className="mx-auto max-w-lg px-4 py-16 text-center">
+      <h1 className="text-lg font-semibold">Dokumen tidak ditemukan</h1>
+      <p className="text-muted-foreground mt-2 text-sm">
+        Dokumen ini mungkin sudah dihapus, tautannya tidak valid, atau Anda
+        membuka editor tanpa memilih dokumen.
+      </p>
+      <Link
+        href="/dokumen"
+        className="text-foreground mt-6 inline-block text-sm font-medium underline-offset-4 hover:underline"
+      >
+        Kembali ke daftar dokumen
+      </Link>
+    </div>
+  )
+}
+
+interface PlaygroundInnerProps {
+  documentId?: string
+}
+
+function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const forceParty = searchParams.get("review") === "1"
+
+  const [doc, setDoc] = useState<AgreedDocument | null | undefined>(undefined)
+  const [storedRole, setStoredRole] = useState<DocumentRole>("initiator")
+  const [tab, setTab] = useState<"variables" | "comments">("variables")
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
+  const [focusComment, setFocusComment] = useState<ContractComment | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [feedback, setFeedback] = useState<string | null>(null)
 
   useEffect(() => {
-    setDraft(loadDraftFromStorage() ?? emptyDraft())
+    setStoredRole(loadDemoRole())
   }, [])
 
   useEffect(() => {
-    if (!draft) return
-    saveDraftToStorage(draft)
-  }, [draft])
+    if (!documentId) {
+      setDoc(null)
+      return
+    }
+    setDoc(loadDocument(documentId))
+  }, [documentId])
 
-  if (!draft) return null
+  useEffect(() => {
+    if (!feedback) return
+    const t = window.setTimeout(() => setFeedback(null), 3000)
+    return () => window.clearTimeout(t)
+  }, [feedback])
+
+  const role: DocumentRole = forceParty ? "party" : storedRole
+  const bodyEditable = doc ? canEditBody(doc.status, role) : false
+  const isReviewLike = Boolean(doc) && !bodyEditable
+
+  useEffect(() => {
+    if (isReviewLike) setTab("comments")
+  }, [isReviewLike])
+
+  const persist = useCallback((next: AgreedDocument) => {
+    saveDocument(next)
+    setDoc(next)
+  }, [])
+
+  function handleDraftChange(draft: ContractDraft) {
+    if (!doc) return
+    persist({ ...doc, draft })
+  }
+
+  function handleSave() {
+    if (!doc) return
+    persist(doc)
+  }
+
+  function handleStatusChange(status: DocumentStatus) {
+    if (!doc) return
+    if (status !== doc.status && !canTransition(doc.status, status)) return
+    persist({ ...doc, status })
+    if (status === "menunggu_ttd_pihak") {
+      setFeedback("TTD+materai dicatat (demo)")
+    } else if (status === "selesai") {
+      setFeedback("Dokumen selesai (demo)")
+    }
+  }
+
+  function handleRoleChange(next: DocumentRole) {
+    setStoredRole(next)
+    persistDemoRole(next)
+    if (forceParty && next === "initiator") {
+      const url = new URL(window.location.href)
+      url.searchParams.delete("review")
+      router.replace(url.pathname + url.search)
+    }
+  }
+
+  function handleSaveAsTemplate() {
+    if (!doc) return
+    saveAsTemplate({ title: doc.title, draft: doc.draft })
+    setFeedback("Template disimpan")
+  }
+
+  if (doc === undefined) return null
+  if (!doc) return <NotFoundState />
+
+  const openCount = (doc.draft.comments ?? []).filter((c) => c.status === "open")
+    .length
+
+  const commentsPanel = (
+    <ContractCommentsPanel
+      draft={doc.draft}
+      onChange={handleDraftChange}
+      reviewerMode={isReviewLike}
+      activeCommentId={activeCommentId}
+      onFocusComment={(c) => {
+        setActiveCommentId(c.id)
+        setFocusComment(c)
+        setMobileOpen(false)
+      }}
+      bare
+    />
+  )
+
+  const variablesPanel = (
+    <ContractVariablesPanel
+      draft={doc.draft}
+      onChange={handleDraftChange}
+      bare
+    />
+  )
+
+  const desktopSidebar = isReviewLike ? (
+    <aside className="border-border/60 bg-background sticky top-[calc(3.5rem+1rem)] hidden max-h-[calc(100dvh-3.5rem-2rem)] w-80 shrink-0 overflow-hidden rounded-lg border lg:block">
+      <div className="h-full overflow-y-auto">{commentsPanel}</div>
+    </aside>
+  ) : (
+    <aside className="border-border/60 bg-background sticky top-[calc(3.5rem+1rem)] hidden max-h-[calc(100dvh-3.5rem-2rem)] w-80 shrink-0 flex-col overflow-hidden rounded-lg border lg:flex">
+      <SidebarTabs
+        tab={tab}
+        onTabChange={setTab}
+        commentCount={openCount}
+      />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {tab === "variables" ? variablesPanel : commentsPanel}
+      </div>
+    </aside>
+  )
+
+  function openMobilePanel(preferred?: "variables" | "comments") {
+    if (preferred) setTab(preferred)
+    else if (isReviewLike) setTab("comments")
+    setMobileOpen(true)
+  }
 
   return (
-    <FullFeaturedEditor
-      draft={draft}
-      onDraftChange={setDraft}
-      sidebar={
-        <ContractVariablesPanel draft={draft} onChange={setDraft} />
-      }
-    />
+    <div className="relative">
+      <FullFeaturedEditor
+        draft={doc.draft}
+        onDraftChange={handleDraftChange}
+        mode={isReviewLike ? "review" : "edit"}
+        documentTitle={doc.title}
+        documentStatus={doc.status}
+        documentRole={role}
+        onDocumentRoleChange={handleRoleChange}
+        onDocumentStatusChange={handleStatusChange}
+        onDocumentSave={handleSave}
+        onSaveAsTemplate={handleSaveAsTemplate}
+        documentFeedback={feedback}
+        sidebar={desktopSidebar}
+        activeCommentId={activeCommentId}
+        onActiveCommentIdChange={setActiveCommentId}
+        focusComment={focusComment}
+        onFocusCommentHandled={() => setFocusComment(null)}
+        onOpenMobilePanel={() => openMobilePanel("variables")}
+        openCommentCount={openCount}
+      />
+
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        {isReviewLike && (
+          <SheetTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              className="fixed right-3 bottom-3 z-20 size-11 rounded-full shadow-md lg:hidden"
+              aria-label="Komentar"
+            >
+              <MessageSquareText className="size-5" />
+              {openCount > 0 && (
+                <span className="bg-background text-foreground absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-medium shadow">
+                  {openCount}
+                </span>
+              )}
+            </Button>
+          </SheetTrigger>
+        )}
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-sm"
+        >
+          <SheetHeader className="border-border/60 border-b px-4 py-3 pr-12 text-left">
+            <SheetTitle className="text-base">
+              {isReviewLike ? "Komentar" : "Panel dokumen"}
+            </SheetTitle>
+          </SheetHeader>
+          {!isReviewLike && (
+            <SidebarTabs
+              tab={tab}
+              onTabChange={setTab}
+              commentCount={openCount}
+            />
+          )}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {isReviewLike || tab === "comments"
+              ? commentsPanel
+              : variablesPanel}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  )
+}
+
+interface PlaygroundPageProps {
+  documentId?: string
+}
+
+const PlaygroundPage = ({ documentId }: PlaygroundPageProps) => {
+  return (
+    <Suspense fallback={null}>
+      <PlaygroundInner documentId={documentId} />
+    </Suspense>
   )
 }
 
