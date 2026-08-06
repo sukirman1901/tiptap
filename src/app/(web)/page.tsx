@@ -1,5 +1,5 @@
-import PlaygroundPage from "@/features/playground/ui"
+import { redirect } from "next/navigation"
 
 export default function HomePage() {
-  return <PlaygroundPage />
+  redirect("/dokumen")
 }
