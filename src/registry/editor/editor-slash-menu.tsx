@@ -276,13 +276,14 @@ EditorSlashMenuList.displayName = "EditorSlashMenuList"
 // =============================================================================
 
 function createSlashMenuSuggestion(
-  items: SlashMenuItem[] = defaultSlashMenuItems
+  items: SlashMenuItem[] | (() => SlashMenuItem[]) = defaultSlashMenuItems
 ): Omit<SuggestionOptions, "editor"> {
   return {
     char: "/",
     items: ({ query }) => {
+      const list = typeof items === "function" ? items() : items
       const normalizedQuery = query.toLowerCase()
-      return items.filter(
+      return list.filter(
         (item) =>
           item.title.toLowerCase().includes(normalizedQuery) ||
           item.searchTerms.some((term) => term.includes(normalizedQuery))
@@ -357,7 +358,7 @@ function createSlashMenuSuggestion(
 // =============================================================================
 
 export interface EditorSlashMenuOptions {
-  items?: SlashMenuItem[]
+  items?: SlashMenuItem[] | (() => SlashMenuItem[])
 }
 
 export const EditorSlashMenuExtension =

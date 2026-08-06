@@ -53,7 +53,10 @@ import {
 } from "@/components/ui/sheet"
 
 import { DocumentCanvas } from "./document-canvas"
-import { ContractDraftStoreSync } from "./contract-draft-store"
+import {
+  ContractDraftStoreSync,
+  getDraftStoreSnapshot,
+} from "./contract-draft-store"
 import { type ContractDraft } from "./contract-draft"
 import { ContractVariablesPanel } from "./contract-variables-panel"
 import { EditorContractVariableExtension } from "./editor-contract-variable"
@@ -337,32 +340,8 @@ export function FullFeaturedEditor({
   const draftRef = useRef(draft)
   draftRef.current = draft
 
-  const slashMenuItems = [
-    ...staticSlashMenuItems,
-    ...draft.fields.map((f) => ({
-      title: `{${f.token}}`,
-      description: `Variabel: ${f.label}`,
-      icon: Braces,
-      searchTerms: ["var", "variabel", f.token, f.label.toLowerCase()],
-      command: (editor: Editor | null) => {
-        editor
-          ?.chain()
-          .focus()
-          .insertContractVariable({ id: f.id, token: f.token })
-          .run()
-      },
-    })),
-  ]
-
-  // Remount when field schema (id/token/label) changes — slash configure is mount-only.
-  // Value keystrokes must not remount the editor.
-  const editorFieldsKey = draft.fields
-    .map((f) => `${f.id}:${f.token}:${f.label}`)
-    .join("|")
-
   return (
     <EditorProvider
-      key={editorFieldsKey}
       content={draft.contentHtml}
       extensions={[
         // Essential extension
@@ -405,9 +384,24 @@ export function FullFeaturedEditor({
         // Table with resizable columns
         EditorTableExtensions,
 
-        // Slash menu
+        // Slash menu — resolve fields from store at query time (no remount)
         EditorSlashMenuExtension.configure({
-          items: slashMenuItems,
+          items: () => [
+            ...staticSlashMenuItems,
+            ...getDraftStoreSnapshot().fields.map((f) => ({
+              title: `{${f.token}}`,
+              description: `Variabel: ${f.label}`,
+              icon: Braces,
+              searchTerms: ["var", "variabel", f.token, f.label.toLowerCase()],
+              command: (editor: Editor | null) => {
+                editor
+                  ?.chain()
+                  .focus()
+                  .insertContractVariable({ id: f.id, token: f.token })
+                  .run()
+              },
+            })),
+          ],
         }),
       ]}
       onUpdate={({ editor }) => {
