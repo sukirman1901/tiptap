@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Suspense, useCallback, useEffect, useState } from "react"
+import { Suspense, useCallback, useEffect, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import {
@@ -133,12 +133,17 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
   const forceParty = searchParams.get("review") === "1"
 
   const [doc, setDoc] = useState<AgreedDocument | null | undefined>(undefined)
+  const docRef = useRef<AgreedDocument | null | undefined>(undefined)
   const [storedRole, setStoredRole] = useState<DocumentRole>("initiator")
   const [tab, setTab] = useState<"variables" | "comments">("variables")
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null)
   const [focusComment, setFocusComment] = useState<ContractComment | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
+
+  useEffect(() => {
+    docRef.current = doc
+  }, [doc])
 
   useEffect(() => {
     setStoredRole(loadDemoRole())
@@ -167,24 +172,29 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
   }, [isReviewLike])
 
   const persist = useCallback((next: AgreedDocument) => {
+    docRef.current = next
     saveDocument(next)
     setDoc(next)
   }, [])
 
   function handleDraftChange(draft: ContractDraft) {
-    if (!doc) return
-    persist({ ...doc, draft })
+    const current = docRef.current
+    if (!current) return
+    persist({ ...current, draft })
   }
 
   function handleSave() {
-    if (!doc) return
-    persist(doc)
+    const current = docRef.current
+    if (!current) return
+    persist(current)
   }
 
   function handleStatusChange(status: DocumentStatus) {
-    if (!doc) return
-    if (status !== doc.status && !canTransition(doc.status, status)) return
-    persist({ ...doc, status })
+    const current = docRef.current
+    if (!current) return
+    if (status !== current.status && !canTransition(current.status, status))
+      return
+    persist({ ...current, status })
     if (status === "menunggu_ttd_pihak") {
       setFeedback("TTD+materai dicatat (demo)")
     } else if (status === "selesai") {
@@ -203,8 +213,9 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
   }
 
   function handleSaveAsTemplate() {
-    if (!doc) return
-    saveAsTemplate({ title: doc.title, draft: doc.draft })
+    const current = docRef.current
+    if (!current) return
+    saveAsTemplate({ title: current.title, draft: current.draft })
     setFeedback("Template disimpan")
   }
 
