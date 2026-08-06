@@ -12,6 +12,10 @@ import {
   listDocuments,
 } from "@/features/documents/storage/document-store"
 import type { AgreedDocument } from "@/features/documents/types"
+import {
+  DRAFT_STORAGE_KEY,
+  loadDraftFromStorage,
+} from "@/features/playground/components/contract-draft"
 
 type Filter = "all" | "needs_action"
 
@@ -35,6 +39,17 @@ export function DocumentList() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    if (listDocuments().length === 0) {
+      const legacy = loadDraftFromStorage()
+      if (legacy) {
+        createDocument({ title: "Draf lama", draft: legacy })
+        try {
+          localStorage.removeItem(DRAFT_STORAGE_KEY)
+        } catch {
+          /* ignore */
+        }
+      }
+    }
     setDocs(listDocuments())
     setReady(true)
   }, [])
