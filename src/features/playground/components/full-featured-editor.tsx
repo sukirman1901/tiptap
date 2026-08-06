@@ -57,7 +57,6 @@ import { DUMMY_CONTRACT_CONTENT } from "./dummy-contract-content"
 import { ContractMetaForm } from "./contract-meta-form"
 import { ContractMetaStoreSync } from "./contract-meta-store"
 import { EditorContractVariableExtension } from "./editor-contract-variable"
-import { CONTRACT_VARIABLES } from "./contract-variables"
 import { type ContractMeta } from "./contract-meta"
 
 import { EditorImageExtension } from "@/registry/editor/editor-image"
@@ -100,7 +99,6 @@ import {
   AlignLeft,
   AlignRight,
   Bold,
-  Braces,
   CheckSquare,
   Code,
   ImageUp,
@@ -180,15 +178,7 @@ const slashMenuItems = [
       editor?.chain().focus().setPageBreak().run()
     },
   },
-  ...CONTRACT_VARIABLES.map((v) => ({
-    title: `{${v.token}}`,
-    description: `Variabel: ${v.label}`,
-    icon: Braces,
-    searchTerms: ["var", "variable", "variabel", ...v.searchTerms],
-    command: (editor: Editor | null) => {
-      editor?.chain().focus().insertContractVariable(v.key).run()
-    },
-  })),
+  // Task 6: restore dynamic slash items from draft.fields
 ]
 
 function ToolbarOverflowMenu() {

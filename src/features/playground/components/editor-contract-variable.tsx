@@ -15,32 +15,34 @@ import { Braces } from "lucide-react"
 import * as React from "react"
 import tippy, { type Instance, type Props } from "tippy.js"
 
-import { useContractMetaStore } from "./contract-meta-store"
 import {
-  CONTRACT_VARIABLES,
-  findVariableByQuery,
-  isContractVariableKey,
-  resolveContractVariable,
-  type ContractVariableDef,
-  type ContractVariableKey,
-} from "./contract-variables"
+  findFieldByToken,
+  getDraftStoreSnapshot,
+  useContractDraftStore,
+} from "./contract-draft-store"
+import { resolveFieldDisplay, type TemplateField } from "./contract-draft"
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
     contractVariable: {
-      insertContractVariable: (key: ContractVariableKey) => ReturnType
+      insertContractVariable: (field: {
+        id: string
+        token: string
+      }) => ReturnType
     }
   }
 }
 
 function ContractVariableView({ node }: NodeViewProps) {
-  const meta = useContractMetaStore()
-  const key = String(node.attrs.key ?? "")
-  const valid = isContractVariableKey(key)
-  const display = valid
-    ? resolveContractVariable(meta, key)
-    : `{${key || "?"}}`
-  const empty = valid && display === `{${key}}`
+  const { fields, values } = useContractDraftStore()
+  const id = String(node.attrs.key ?? "")
+  const tokenAttr = String(node.attrs.token ?? "")
+  const field = fields.find((f) => f.id === id)
+  const token = field?.token || tokenAttr || "?"
+  const display = field
+    ? resolveFieldDisplay(field, values[id] ?? "")
+    : `{${token}}`
+  const empty = display === `{${token}}`
 
   return (
     <NodeViewWrapper
@@ -49,7 +51,8 @@ function ContractVariableView({ node }: NodeViewProps) {
         "contract-variable",
         empty && "contract-variable--empty"
       )}
-      data-key={key}
+      data-key={id}
+      data-token={token}
       contentEditable={false}
     >
       {/* Inner element required — TipTap BubbleMenu crashes on bare text in atom node views */}
@@ -69,10 +72,17 @@ const ContractVariableNode = Node.create({
   addAttributes() {
     return {
       key: {
-        default: "nilai",
+        default: "",
         parseHTML: (el) =>
-          (el as HTMLElement).getAttribute("data-key") ?? "nilai",
+          (el as HTMLElement).getAttribute("data-key") ?? "",
         renderHTML: (attrs) => ({ "data-key": attrs.key }),
+      },
+      token: {
+        default: "",
+        parseHTML: (el) =>
+          (el as HTMLElement).getAttribute("data-token") ?? "",
+        renderHTML: (attrs) =>
+          attrs.token ? { "data-token": attrs.token } : {},
       },
     }
   },
@@ -98,11 +108,11 @@ const ContractVariableNode = Node.create({
   addCommands() {
     return {
       insertContractVariable:
-        (key: ContractVariableKey) =>
+        (field: { id: string; token: string }) =>
         ({ commands }) =>
           commands.insertContent({
             type: this.name,
-            attrs: { key },
+            attrs: { key: field.id, token: field.token },
           }),
     }
   },
@@ -110,12 +120,17 @@ const ContractVariableNode = Node.create({
   addInputRules() {
     return [
       new InputRule({
-        find: /\{(judul|pihak1|pihak2|tanggal|nilai)\}$/,
+        find: /\{([a-z0-9_]+)\}$/,
         handler: ({ state, range, match }) => {
-          const key = match[1]
-          if (!isContractVariableKey(key)) return
+          const token = match[1]
+          const field = findFieldByToken(token)
+          if (!field) return
           const { tr } = state
-          tr.replaceWith(range.from, range.to, this.type.create({ key }))
+          tr.replaceWith(
+            range.from,
+            range.to,
+            this.type.create({ key: field.id, token: field.token })
+          )
         },
       }),
     ]
@@ -123,8 +138,8 @@ const ContractVariableNode = Node.create({
 })
 
 interface VariableListProps {
-  items: ContractVariableDef[]
-  command: (item: ContractVariableDef) => void
+  items: TemplateField[]
+  command: (item: TemplateField) => void
 }
 
 interface VariableListRef {
@@ -161,7 +176,7 @@ const VariableList = React.forwardRef<VariableListRef, VariableListProps>(
     if (items.length === 0) {
       return (
         <div className="text-muted-foreground p-3 text-center text-sm">
-          Tidak ada variabel
+          Belum ada variabel — tambah di panel kanan.
         </div>
       )
     }
@@ -170,7 +185,7 @@ const VariableList = React.forwardRef<VariableListRef, VariableListProps>(
       <div className="bg-popover max-h-[240px] overflow-auto rounded-md border p-1 shadow-md">
         {items.map((item, index) => (
           <button
-            key={item.key}
+            key={item.id}
             type="button"
             onClick={() => command(item)}
             className={cn(
@@ -202,14 +217,24 @@ function createVariableSuggestion(): Omit<SuggestionOptions, "editor"> {
     char: "@",
     pluginKey: new PluginKey("contractVariableSuggestion"),
     allowSpaces: false,
-    items: ({ query }) => findVariableByQuery(query),
+    items: ({ query }) => {
+      const q = query.toLowerCase()
+      const { fields } = getDraftStoreSnapshot()
+      const list = !q
+        ? fields
+        : fields.filter(
+            (f) =>
+              f.token.includes(q) || f.label.toLowerCase().includes(q)
+          )
+      return list
+    },
     command: ({ editor, range, props }) => {
-      const item = props as ContractVariableDef
+      const field = props as TemplateField
       editor
         .chain()
         .focus()
         .deleteRange(range)
-        .insertContractVariable(item.key)
+        .insertContractVariable({ id: field.id, token: field.token })
         .run()
     },
     render: () => {
@@ -340,13 +365,5 @@ function injectVariableStyles() {
 
 export const EditorContractVariableExtension = createEditorExtension({
   extension: [ContractVariableNode, ContractVariableMention],
-  commands: CONTRACT_VARIABLES.map((v) => ({
-    key: `variable-${v.key}`,
-    icon: Braces,
-    label: v.label,
-    description: `Sisipkan {${v.token}}`,
-    execute: (editor) =>
-      editor.chain().focus().insertContractVariable(v.key).run(),
-    canExecute: () => true,
-  })),
+  commands: [],
 })
