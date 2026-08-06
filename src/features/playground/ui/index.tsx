@@ -2,23 +2,24 @@
 
 import { useEffect, useState } from "react"
 import {
+  emptyDraft,
   loadDraftFromStorage,
   saveDraftToStorage,
   type ContractDraft,
 } from "../components/contract-draft"
 import { ContractVariablesPanel } from "../components/contract-variables-panel"
-import { createStarterPerjanjianDraft } from "../components/starter-perjanjian-ks"
 import { FullFeaturedEditor } from "../components/full-featured-editor"
 
 /**
- * Playground default: hydrate from LocalStorage, else Perjanjian KS starter.
- * Later “dokumen baru” can use emptyDraft() + template picker instead.
+ * Blank by default — no hardcoded fields. User adds variables via the panel.
+ * Optional starter template (`createStarterPerjanjianDraft`) is for a future
+ * “pakai template” picker, not auto-loaded.
  */
 const PlaygroundPage = () => {
   const [draft, setDraft] = useState<ContractDraft | null>(null)
 
   useEffect(() => {
-    setDraft(loadDraftFromStorage() ?? createStarterPerjanjianDraft())
+    setDraft(loadDraftFromStorage() ?? emptyDraft())
   }, [])
 
   useEffect(() => {

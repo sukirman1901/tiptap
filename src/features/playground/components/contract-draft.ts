@@ -15,7 +15,8 @@ export type ContractDraft = {
   contentHtml: string
 }
 
-export const DRAFT_STORAGE_KEY = "editor-kontrak:draft:v1"
+/** Bump when default seed shape changes so old LocalStorage drafts are ignored. */
+export const DRAFT_STORAGE_KEY = "editor-kontrak:draft:v2"
 
 export function slugifyToken(label: string): string {
   const base = label
