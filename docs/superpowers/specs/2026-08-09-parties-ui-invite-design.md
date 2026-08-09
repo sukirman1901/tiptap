@@ -1,7 +1,7 @@
 # Agreed — Parties UI + Invite (Properti Panel)
 
 **Date:** 2026-08-09  
-**Status:** Draft (awaiting user review of this spec)  
+**Status:** Approved  
 **Approach:** 1 — Client-first Properti panel + thin invite API with snapshot  
 **Related:**  
 - `docs/superpowers/specs/2026-08-09-contract-data-model-design.md` (ops graph)  
