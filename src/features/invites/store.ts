@@ -17,8 +17,15 @@ function ensureDir() {
   fs.mkdirSync(dataDir(), { recursive: true })
 }
 
-function filePath(token: string) {
-  return path.join(dataDir(), `${token}.json`)
+const INVITE_TOKEN_PATTERN = /^[a-f0-9]{32}$/i
+
+function filePath(token: string): string | null {
+  if (!INVITE_TOKEN_PATTERN.test(token)) return null
+  const fp = path.join(dataDir(), `${token}.json`)
+  const resolved = path.resolve(fp)
+  const base = path.resolve(dataDir())
+  if (!resolved.startsWith(base + path.sep)) return null
+  return fp
 }
 
 export function createInvite(input: {
@@ -56,13 +63,15 @@ export function createInvite(input: {
     status: "pending",
     snapshot: input.snapshot,
   }
-  fs.writeFileSync(filePath(token), JSON.stringify(record, null, 2), "utf8")
+  const fp = filePath(token)
+  if (!fp) throw new Error("Invalid invite token")
+  fs.writeFileSync(fp, JSON.stringify(record, null, 2), "utf8")
   return record
 }
 
 export function getInviteByToken(token: string): InviteRecord | null {
   const fp = filePath(token)
-  if (!fs.existsSync(fp)) return null
+  if (!fp || !fs.existsSync(fp)) return null
   const record = JSON.parse(fs.readFileSync(fp, "utf8")) as InviteRecord
   if (new Date(record.expiresAt).getTime() < Date.now()) {
     if (record.status !== "expired") {
@@ -78,7 +87,9 @@ export function markRedeemed(token: string): InviteRecord | null {
   if (!record || record.status === "expired") return null
   record.status = "redeemed"
   record.redeemedAt = new Date().toISOString()
-  fs.writeFileSync(filePath(token), JSON.stringify(record, null, 2), "utf8")
+  const fp = filePath(token)
+  if (!fp) return null
+  fs.writeFileSync(fp, JSON.stringify(record, null, 2), "utf8")
   return record
 }
 
@@ -87,6 +98,8 @@ export function markSent(token: string): void {
   if (!record) return
   if (record.status === "pending") {
     record.status = "sent"
-    fs.writeFileSync(filePath(token), JSON.stringify(record, null, 2), "utf8")
+    const fp = filePath(token)
+    if (!fp) return
+    fs.writeFileSync(fp, JSON.stringify(record, null, 2), "utf8")
   }
 }

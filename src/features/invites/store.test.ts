@@ -47,6 +47,10 @@ describe("invite store", () => {
     expect(loaded?.snapshot.contentHtml).toBe("<p>Hi</p>")
   })
 
+  it("rejects path traversal tokens", () => {
+    expect(getInviteByToken("../etc/passwd")).toBeNull()
+  })
+
   it("marks redeemed", () => {
     const created = createInvite({
       documentId: "doc-1",
