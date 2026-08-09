@@ -7,9 +7,11 @@ import type { AgreedDocument } from "@/features/documents/types"
 import { migrateDocument } from "@/features/documents/storage/migrate-document"
 
 export async function POST(req: Request) {
-  const body = (await req.json()) as {
-    document?: unknown
-    partyId?: string
+  let body: { document?: unknown; partyId?: string }
+  try {
+    body = (await req.json()) as { document?: unknown; partyId?: string }
+  } catch {
+    return NextResponse.json({ error: "Payload tidak valid" }, { status: 400 })
   }
   if (!body.partyId || !body.document) {
     return NextResponse.json({ error: "Payload tidak lengkap" }, { status: 400 })
@@ -18,6 +20,9 @@ export async function POST(req: Request) {
   const party = doc.ops.parties.find((p) => p.id === body.partyId)
   if (!party) {
     return NextResponse.json({ error: "Pihak tidak ditemukan" }, { status: 404 })
+  }
+  if (party.kind === "initiator") {
+    return NextResponse.json({ error: "Tidak dapat mengundang inisiator" }, { status: 400 })
   }
   if (!isValidEmail(party.email)) {
     return NextResponse.json({ error: "Email pihak tidak valid" }, { status: 400 })
