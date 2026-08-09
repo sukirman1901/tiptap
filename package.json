@@ -55,6 +55,7 @@
     "react": "^19.0.0",
     "react-colorful": "^5.6.1",
     "react-dom": "^19.0.0",
+    "resend": "^6.18.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "tippy.js": "^6.3.7"
