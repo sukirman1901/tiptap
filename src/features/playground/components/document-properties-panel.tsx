@@ -71,6 +71,9 @@ export function DocumentPropertiesPanel({
   className,
 }: DocumentPropertiesPanelProps) {
   const [inviteLinks, setInviteLinks] = useState<Record<string, string>>({})
+  const [inviteEmailSent, setInviteEmailSent] = useState<Record<string, boolean>>(
+    {}
+  )
   const [inviteErrors, setInviteErrors] = useState<Record<string, string>>({})
   const [emailErrors, setEmailErrors] = useState<Record<string, string>>({})
   const [invitingId, setInvitingId] = useState<string | null>(null)
@@ -129,6 +132,11 @@ export function DocumentPropertiesPanel({
       delete next[partyId]
       return next
     })
+    setInviteEmailSent((prev) => {
+      const next = { ...prev }
+      delete next[partyId]
+      return next
+    })
     setInviteErrors((prev) => {
       const next = { ...prev }
       delete next[partyId]
@@ -158,6 +166,7 @@ export function DocumentPropertiesPanel({
       })
       const data = (await res.json()) as {
         inviteUrl?: string
+        emailSent?: boolean
         emailError?: string | null
         error?: string
       }
@@ -172,6 +181,10 @@ export function DocumentPropertiesPanel({
 
       if (data.inviteUrl) {
         setInviteLinks((prev) => ({ ...prev, [party.id]: data.inviteUrl! }))
+        setInviteEmailSent((prev) => ({
+          ...prev,
+          [party.id]: data.emailSent === true,
+        }))
       }
       if (data.emailError) {
         setEmailErrors((prev) => ({ ...prev, [party.id]: data.emailError! }))
@@ -287,7 +300,7 @@ export function DocumentPropertiesPanel({
                   </span>
                   <div className="flex items-center gap-2">
                     <PartyBadges party={party} />
-                    {canRemoveParty && (
+                    {canRemoveParty && party.kind !== "initiator" && (
                       <button
                         type="button"
                         onClick={() => handleRemoveParty(party.id)}
@@ -373,7 +386,11 @@ export function DocumentPropertiesPanel({
                       </p>
                     )}
                     {inviteUrl && (
-                      <div className="flex gap-1.5">
+                      <div className="space-y-1.5">
+                        <p className="text-muted-foreground text-[11px]" role="status">
+                          {inviteEmailSent[party.id] ? "Terkirim" : "Siap dibagikan"}
+                        </p>
+                        <div className="flex gap-1.5">
                         <Input
                           readOnly
                           value={inviteUrl}
@@ -390,6 +407,7 @@ export function DocumentPropertiesPanel({
                         >
                           <Copy className="size-3.5" />
                         </Button>
+                        </div>
                       </div>
                     )}
                     {copiedId === party.id && (
