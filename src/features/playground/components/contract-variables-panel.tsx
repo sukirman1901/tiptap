@@ -46,6 +46,8 @@ export interface ContractVariablesPanelProps {
   className?: string
   /** Hide the outer aside chrome (e.g. inside a Sheet). */
   bare?: boolean
+  /** Hide top "Properti" heading when embedded in DocumentPropertiesPanel. */
+  embedded?: boolean
 }
 
 export function ContractVariablesPanel({
@@ -53,6 +55,7 @@ export function ContractVariablesPanel({
   onChange,
   className,
   bare = false,
+  embedded = false,
 }: ContractVariablesPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
   const emptyFields = getEmptyFields(draft)
@@ -108,33 +111,49 @@ export function ContractVariablesPanel({
   }
 
   const body = (
-    <div className="flex flex-col gap-5 px-4 py-5 sm:px-5">
-      <div className="space-y-1.5">
-        <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">
-          Properti
-        </h2>
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          Isi nilai di sini. Ketik <span className="font-mono">@</span> di dokumen
-          untuk menyisipkan. Klik label untuk ubah nama/tipe.
+    <div
+      className={cn(
+        "flex flex-col gap-5",
+        embedded ? "px-0 py-0" : "px-4 py-5 sm:px-5"
+      )}
+    >
+      {!embedded && (
+        <div className="space-y-1.5">
+          <h2 className="text-muted-foreground text-[11px] font-medium tracking-[0.12em] uppercase">
+            Properti
+          </h2>
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            Isi nilai di sini. Ketik <span className="font-mono">@</span> di dokumen
+            untuk menyisipkan. Klik label untuk ubah nama/tipe.
+          </p>
+          {draft.fields.length > 0 &&
+            (emptyCount > 0 ? (
+              <p
+                className="rounded-md border border-amber-600/25 bg-amber-50/60 px-2.5 py-1.5 text-[12px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+                role="status"
+              >
+                {emptyCount} properti belum diisi — di draf masih tampil sebagai{" "}
+                <span className="font-mono">{"{token}"}</span>.
+              </p>
+            ) : (
+              <p
+                className="text-muted-foreground rounded-md border border-border/50 bg-muted/30 px-2.5 py-1.5 text-[12px]"
+                role="status"
+              >
+                Semua properti terisi.
+              </p>
+            ))}
+        </div>
+      )}
+      {embedded && draft.fields.length > 0 && emptyCount > 0 && (
+        <p
+          className="rounded-md border border-amber-600/25 bg-amber-50/60 px-2.5 py-1.5 text-[12px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+          role="status"
+        >
+          {emptyCount} properti belum diisi — di draf masih tampil sebagai{" "}
+          <span className="font-mono">{"{token}"}</span>.
         </p>
-        {draft.fields.length > 0 &&
-          (emptyCount > 0 ? (
-            <p
-              className="rounded-md border border-amber-600/25 bg-amber-50/60 px-2.5 py-1.5 text-[12px] text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
-              role="status"
-            >
-              {emptyCount} properti belum diisi — di draf masih tampil sebagai{" "}
-              <span className="font-mono">{"{token}"}</span>.
-            </p>
-          ) : (
-            <p
-              className="text-muted-foreground rounded-md border border-border/50 bg-muted/30 px-2.5 py-1.5 text-[12px]"
-              role="status"
-            >
-              Semua properti terisi.
-            </p>
-          ))}
-      </div>
+      )}
 
       {draft.fields.length === 0 ? (
         <div className="flex flex-col gap-3">

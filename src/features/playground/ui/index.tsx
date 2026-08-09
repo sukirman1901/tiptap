@@ -35,7 +35,7 @@ import {
   type ContractDraft,
 } from "../components/contract-draft"
 import { ContractCommentsPanel } from "../components/contract-comments-panel"
-import { ContractVariablesPanel } from "../components/contract-variables-panel"
+import { DocumentPropertiesPanel } from "../components/document-properties-panel"
 import { FullFeaturedEditor } from "../components/full-featured-editor"
 
 function SidebarTabs({
@@ -234,12 +234,8 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
     />
   )
 
-  const variablesPanel = (
-    <ContractVariablesPanel
-      draft={doc.draft}
-      onChange={handleDraftChange}
-      bare
-    />
+  const propertiesPanel = (
+    <DocumentPropertiesPanel document={doc} onChange={persist} bare />
   )
 
   const desktopSidebar = isReviewLike ? (
@@ -254,7 +250,7 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
         commentCount={openCount}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {tab === "variables" ? variablesPanel : commentsPanel}
+        {tab === "variables" ? propertiesPanel : commentsPanel}
       </div>
     </aside>
   )
@@ -323,7 +319,7 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
           <div className="min-h-0 flex-1 overflow-y-auto">
             {isReviewLike || tab === "comments"
               ? commentsPanel
-              : variablesPanel}
+              : propertiesPanel}
           </div>
         </SheetContent>
       </Sheet>
