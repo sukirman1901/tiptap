@@ -1,5 +1,5 @@
 import { emptyDraft, type ContractDraft } from "@/features/playground/components/contract-draft"
-import { emptyContractOps } from "../domain/contract-ops"
+import { seededContractOps } from "../domain/parties"
 import type { AgreedDocument, UserTemplate } from "../types"
 import { migrateDocument } from "./migrate-document"
 
@@ -58,7 +58,7 @@ export function createDocument(input: {
     createdAt: now,
     updatedAt: now,
     draft: input.draft ?? emptyDraft(),
-    ops: emptyContractOps(),
+    ops: seededContractOps(),
   }
   writeDocs([doc, ...readDocs()])
   return doc

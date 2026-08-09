@@ -76,9 +76,16 @@ describe("document-store", () => {
     expect(doc.number).toBeNull()
     expect(doc.subject).toBeNull()
     expect(doc.contractDate).toBeNull()
-    expect(doc.ops.parties).toEqual([])
     expect(doc.ops.paymentPlan.currency).toBe("IDR")
     expect(loadDocument(doc.id)?.ops.paymentPlan.id).toBe(doc.ops.paymentPlan.id)
+  })
+
+  it("seeds two parties on create", () => {
+    const doc = createDocument({ title: "Dengan pihak" })
+    expect(doc.ops.parties).toHaveLength(2)
+    expect(doc.ops.parties[0]!.kind).toBe("initiator")
+    expect(doc.ops.parties[1]!.kind).toBe("counterparty")
+    expect(doc.ops.signatures).toHaveLength(2)
   })
 
   it("migrates legacy v1 documents from old key", () => {
