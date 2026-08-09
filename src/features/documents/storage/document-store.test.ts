@@ -2,11 +2,14 @@ import { beforeEach, describe, expect, it } from "vitest"
 import {
   createDocument,
   deleteDocument,
+  DOCUMENTS_KEY,
+  DOCUMENTS_KEY_LEGACY,
   listDocuments,
   loadDocument,
   renameDocument,
   saveDocument,
 } from "./document-store"
+import { migrateDocument } from "./migrate-document"
 import { emptyDraft } from "@/features/playground/components/contract-draft"
 
 function installLocalStorage() {
@@ -66,5 +69,48 @@ describe("document-store", () => {
     expect(deleteDocument(doc.id)).toBe(true)
     expect(listDocuments()).toHaveLength(0)
     expect(loadDocument(doc.id)).toBeNull()
+  })
+
+  it("seeds ops and metadata on create", () => {
+    const doc = createDocument({ title: "Baru", draft: emptyDraft() })
+    expect(doc.number).toBeNull()
+    expect(doc.subject).toBeNull()
+    expect(doc.contractDate).toBeNull()
+    expect(doc.ops.parties).toEqual([])
+    expect(doc.ops.paymentPlan.currency).toBe("IDR")
+    expect(loadDocument(doc.id)?.ops.paymentPlan.id).toBe(doc.ops.paymentPlan.id)
+  })
+
+  it("migrates legacy v1 documents from old key", () => {
+    const legacy = {
+      id: "legacy-1",
+      title: "Legacy",
+      status: "draf",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      updatedAt: "2026-08-01T00:00:00.000Z",
+      draft: emptyDraft(),
+    }
+    localStorage.setItem(DOCUMENTS_KEY_LEGACY, JSON.stringify([legacy]))
+    const listed = listDocuments()
+    expect(listed).toHaveLength(1)
+    expect(listed[0]!.id).toBe("legacy-1")
+    expect(listed[0]!.ops.stamp.status).toBe("not_required")
+    // rewritten to v2 key
+    expect(localStorage.getItem(DOCUMENTS_KEY)).toBeTruthy()
+  })
+
+  it("round-trips ops through saveDocument", () => {
+    const doc = createDocument({ title: "Ops", draft: emptyDraft() })
+    const next = migrateDocument({
+      ...doc,
+      number: "AGD-9",
+      ops: {
+        ...doc.ops,
+        stamp: { required: true, status: "pending", attachedAt: null },
+      },
+    })
+    saveDocument(next)
+    expect(loadDocument(doc.id)?.number).toBe("AGD-9")
+    expect(loadDocument(doc.id)?.ops.stamp.required).toBe(true)
   })
 })

@@ -1,16 +1,31 @@
 import { emptyDraft, type ContractDraft } from "@/features/playground/components/contract-draft"
+import { emptyContractOps } from "../domain/contract-ops"
 import type { AgreedDocument, UserTemplate } from "../types"
+import { migrateDocument } from "./migrate-document"
 
-export const DOCUMENTS_KEY = "agreed:documents:v1"
+/** Current persistence key */
+export const DOCUMENTS_KEY = "agreed:documents:v2"
+/** Pre-ops documents */
+export const DOCUMENTS_KEY_LEGACY = "agreed:documents:v1"
 export const TEMPLATES_KEY = "agreed:templates:v1"
 
 function readDocs(): AgreedDocument[] {
   if (typeof window === "undefined") return []
   try {
-    const raw = localStorage.getItem(DOCUMENTS_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as AgreedDocument[]
-    return Array.isArray(parsed) ? parsed : []
+    const rawV2 = localStorage.getItem(DOCUMENTS_KEY)
+    if (rawV2) {
+      const parsed = JSON.parse(rawV2) as unknown
+      if (!Array.isArray(parsed)) return []
+      return parsed.map(migrateDocument)
+    }
+    const rawV1 = localStorage.getItem(DOCUMENTS_KEY_LEGACY)
+    if (!rawV1) return []
+    const parsed = JSON.parse(rawV1) as unknown
+    if (!Array.isArray(parsed)) return []
+    const migrated = parsed.map(migrateDocument)
+    writeDocs(migrated)
+    localStorage.removeItem(DOCUMENTS_KEY_LEGACY)
+    return migrated
   } catch {
     return []
   }
@@ -37,17 +52,24 @@ export function createDocument(input: {
     id: crypto.randomUUID(),
     title: input.title.trim() || "Dokumen tanpa judul",
     status: "draf",
+    number: null,
+    subject: null,
+    contractDate: null,
     createdAt: now,
     updatedAt: now,
     draft: input.draft ?? emptyDraft(),
+    ops: emptyContractOps(),
   }
   writeDocs([doc, ...readDocs()])
   return doc
 }
 
 export function saveDocument(doc: AgreedDocument): void {
-  const next = { ...doc, updatedAt: new Date().toISOString() }
-  const others = readDocs().filter((d) => d.id !== doc.id)
+  const next = migrateDocument({
+    ...doc,
+    updatedAt: new Date().toISOString(),
+  })
+  const others = readDocs().filter((d) => d.id !== next.id)
   writeDocs([next, ...others])
 }
 
@@ -62,11 +84,11 @@ export function deleteDocument(id: string): boolean {
 export function renameDocument(id: string, title: string): AgreedDocument | null {
   const doc = loadDocument(id)
   if (!doc) return null
-  const next = {
+  const next = migrateDocument({
     ...doc,
     title: title.trim() || "Dokumen tanpa judul",
     updatedAt: new Date().toISOString(),
-  }
+  })
   const others = readDocs().filter((d) => d.id !== id)
   writeDocs([next, ...others])
   return next
