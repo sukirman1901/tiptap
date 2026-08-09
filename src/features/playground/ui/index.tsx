@@ -28,6 +28,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { MessageSquareText } from "lucide-react"
 
+import { agreedDocumentFromSnapshot } from "@/features/invites/guest-document"
+import type { DocumentSnapshot } from "@/features/invites/types"
 import {
   type ContractComment,
   type ContractDraft,
@@ -108,6 +110,7 @@ interface PlaygroundInnerProps {
 
 function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
   const searchParams = useSearchParams()
+  const inviteMode = searchParams.get("invite") === "1"
   /** Review link (?review=1) = pihak lain; otherwise inisiator. */
   const role: DocumentRole =
     searchParams.get("review") === "1" ? "party" : "initiator"
@@ -129,8 +132,32 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
       setDoc(null)
       return
     }
+    if (inviteMode) {
+      const raw = sessionStorage.getItem(`agreed:snapshot:${documentId}`)
+      if (raw) {
+        const snap = JSON.parse(raw) as DocumentSnapshot
+        let next = agreedDocumentFromSnapshot(snap)
+        const guestCommentsRaw = sessionStorage.getItem(
+          `agreed:guest-comments:${documentId}`
+        )
+        if (guestCommentsRaw) {
+          try {
+            const comments = JSON.parse(guestCommentsRaw) as ContractComment[]
+            if (Array.isArray(comments)) {
+              next = { ...next, draft: { ...next.draft, comments } }
+            }
+          } catch {
+            // ignore malformed guest comments
+          }
+        }
+        setDoc(next)
+        return
+      }
+      setDoc(null)
+      return
+    }
     setDoc(loadDocument(documentId))
-  }, [documentId])
+  }, [documentId, inviteMode])
 
   useEffect(() => {
     if (!feedback) return
@@ -145,11 +172,21 @@ function PlaygroundInner({ documentId }: PlaygroundInnerProps) {
     if (isReviewLike) setTab("comments")
   }, [isReviewLike])
 
-  const persist = useCallback((next: AgreedDocument) => {
-    docRef.current = next
-    saveDocument(next)
-    setDoc(next)
-  }, [])
+  const persist = useCallback(
+    (next: AgreedDocument) => {
+      docRef.current = next
+      if (!inviteMode) {
+        saveDocument(next)
+      } else {
+        sessionStorage.setItem(
+          `agreed:guest-comments:${next.id}`,
+          JSON.stringify(next.draft.comments)
+        )
+      }
+      setDoc(next)
+    },
+    [inviteMode]
+  )
 
   function handleDraftChange(draft: ContractDraft) {
     const current = docRef.current
