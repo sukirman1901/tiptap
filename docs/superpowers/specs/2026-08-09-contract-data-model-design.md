@@ -1,7 +1,7 @@
 # Agreed — Contract Data Model (Structured Ops + Custom Fields)
 
 **Date:** 2026-08-09  
-**Status:** Draft (awaiting user review of this spec)  
+**Status:** Approved  
 **Approach:** 3 — structured contract ops in DB + `DocumentField[]` for custom merge fields  
 **Related:** `docs/superpowers/specs/2026-08-06-agreed-roles-nav-design.md` (lifecycle / roles)
 
